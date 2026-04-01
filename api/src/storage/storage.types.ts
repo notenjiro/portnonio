@@ -35,6 +35,7 @@ export interface AccountAssetLinkRecord {
   id: string;
   accountId: string;
   assetId: string;
+  quantity: number;
   createdAt: string;
   updatedAt: string;
 }

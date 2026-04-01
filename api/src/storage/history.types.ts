@@ -1,13 +1,11 @@
 export interface BinanceDailyHistoryRecord {
   date: string; // YYYY-MM-DD
   accountId: string;
-  realizedPnl: number;
-  unrealizedPnl: number;
-  funding: number;
-  fees: number;
-  otherIncome: number;
-  netPnl: number;
-  endValueUsd: number | null;
+  spotValueUsd: number;
+  futuresNotionalUsd: number;
+  futuresUnrealizedPnl: number;
+  totalTrackedUsd: number;
+  fetchedAt: string;
   createdAt: string;
   updatedAt: string;
 }

@@ -6,7 +6,9 @@ import {
   readPortfolioCalendar,
   readPortfolioSnapshots
 } from "../../storage/history.repository";
-import { seedDemoHistory } from "./store.history-service";
+import {
+  rebuildDerivedPortfolioViewsFromHistory
+} from "./store.history-service";
 
 export async function getBinanceHistoryHandler(_req: Request, res: Response, next: NextFunction) {
   try {
@@ -73,9 +75,13 @@ export async function getPortfolioSnapshotsHandler(_req: Request, res: Response,
   }
 }
 
-export async function seedDemoHistoryHandler(_req: Request, res: Response, next: NextFunction) {
+export async function rebuildDerivedPortfolioViewsHandler(
+  _req: Request,
+  res: Response,
+  next: NextFunction
+) {
   try {
-    const result = await seedDemoHistory();
+    const result = await rebuildDerivedPortfolioViewsFromHistory();
 
     res.status(201).json({
       ok: true,

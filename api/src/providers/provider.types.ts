@@ -78,3 +78,35 @@ export interface BinanceFuturesPositionsResponse {
   fetchedAt: string;
   positions: BinanceFuturesPosition[];
 }
+
+export interface BinancePortfolioResponse {
+  accountId: string;
+  fetchedAt: string;
+  spot: {
+    holdings: BinanceSpotHolding[];
+    totalValueUsd: number;
+    pricedCount: number;
+    unpricedCount: number;
+  };
+  futures: {
+    positions: BinanceFuturesPosition[];
+    totalNotionalUsd: number;
+    totalUnrealizedPnl: number;
+    positionCount: number;
+  };
+}
+
+export interface TwelveDataProviderHealth {
+  ok: boolean;
+  provider: "twelvedata";
+  configured: boolean;
+  hasApiKey: boolean;
+  baseUrl: string;
+}
+
+export interface SecProviderHealth {
+  ok: boolean;
+  provider: "sec";
+  configured: boolean;
+  baseUrl: string;
+}

@@ -8,7 +8,7 @@
       "source": "binance",
       "provider": "binance",
       "createdAt": "2026-04-01T07:09:58.432Z",
-      "updatedAt": "2026-04-01T08:59:50.756Z",
+      "updatedAt": "2026-04-01T15:31:52.502Z",
       "settings": {
         "apiKey": "MmQeN1chazBHZIwZssd7MMuemsGQBY67MpV0iYb4iPdUVECKd85JAJmEQ6uuOAvj",
         "apiSecret": "jved4PEma1ZqlvkbUXSZ8dhrkw09o3FdgMuvAl8zvG9qrzTI5yofvuMbSh6IWCXs",
@@ -18,7 +18,7 @@
           "futures"
         ],
         "label": "main-account",
-        "lastValidatedAt": "2026-04-01T08:59:50.754Z"
+        "lastValidatedAt": "2026-04-01T15:31:52.502Z"
       }
     }
   ],
@@ -32,6 +32,26 @@
       "currency": "USD",
       "createdAt": "2026-04-01T07:10:11.408Z",
       "updatedAt": "2026-04-01T07:10:11.408Z"
+    },
+    {
+      "id": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+      "symbol": "AAPL",
+      "name": "Apple Inc.",
+      "source": "stock",
+      "category": "stock",
+      "currency": "USD",
+      "createdAt": "2026-04-01T10:38:36.601Z",
+      "updatedAt": "2026-04-01T10:38:36.601Z"
+    },
+    {
+      "id": "dbdf0707-0bb4-4410-89a6-18a8daaa156d",
+      "symbol": "SCBSET50",
+      "name": "SCB SET50 Fund",
+      "source": "fund",
+      "category": "fund",
+      "currency": "THB",
+      "createdAt": "2026-04-01T10:39:19.496Z",
+      "updatedAt": "2026-04-01T10:39:19.496Z"
     }
   ],
   "accountAssetLinks": [
@@ -40,7 +60,16 @@
       "accountId": "3df7bf8e-e3bc-4b15-ac22-9c550106ed2f",
       "assetId": "5bc422cc-b19f-41df-b358-7b26c365da5e",
       "createdAt": "2026-04-01T08:23:38.488Z",
-      "updatedAt": "2026-04-01T08:23:38.488Z"
+      "updatedAt": "2026-04-01T08:23:38.488Z",
+      "quantity": 1
+    },
+    {
+      "id": "0f930016-2287-4bd9-aa4c-2299c2f75d71",
+      "accountId": "3df7bf8e-e3bc-4b15-ac22-9c550106ed2f",
+      "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+      "quantity": 10,
+      "createdAt": "2026-04-01T11:23:06.421Z",
+      "updatedAt": "2026-04-01T11:23:06.421Z"
     }
   ]
 }

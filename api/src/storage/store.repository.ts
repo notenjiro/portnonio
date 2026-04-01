@@ -16,7 +16,12 @@ function normalizeStoreData(input: Partial<StoreData> | null | undefined): Store
     baseCurrency: "USD",
     accounts: Array.isArray(input?.accounts) ? input.accounts : [],
     assets: Array.isArray(input?.assets) ? input.assets : [],
-    accountAssetLinks: Array.isArray(input?.accountAssetLinks) ? input.accountAssetLinks : []
+    accountAssetLinks: Array.isArray(input?.accountAssetLinks)
+      ? input.accountAssetLinks.map((link: any) => ({
+          ...link,
+          quantity: typeof link.quantity === "number" ? link.quantity : 1 // ⭐ default
+        }))
+      : []
   };
 }
 

@@ -175,6 +175,7 @@ export async function linkAssetToAccount(input: LinkAssetToAccountInput): Promis
     id: randomUUID(),
     accountId: input.accountId,
     assetId: input.assetId,
+    quantity: input.quantity ?? 1,
     createdAt: now,
     updatedAt: now
   };

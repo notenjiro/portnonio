@@ -1,28 +1,13 @@
 [
   {
-    "date": "2026-03-30",
-    "accountId": "demo-binance-account",
-    "realizedPnl": 120.5,
-    "unrealizedPnl": -25.2,
-    "funding": 4.1,
-    "fees": 3.4,
-    "otherIncome": 0,
-    "netPnl": 96,
-    "endValueUsd": 15120.45,
-    "createdAt": "2026-04-01T08:35:07.643Z",
-    "updatedAt": "2026-04-01T08:35:07.643Z"
-  },
-  {
-    "date": "2026-03-31",
-    "accountId": "demo-binance-account",
-    "realizedPnl": -40,
-    "unrealizedPnl": 18.25,
-    "funding": 2.8,
-    "fees": 1.05,
-    "otherIncome": 0,
-    "netPnl": -19.99,
-    "endValueUsd": 15100.46,
-    "createdAt": "2026-04-01T08:35:07.643Z",
-    "updatedAt": "2026-04-01T08:35:07.643Z"
+    "date": "2026-04-01",
+    "accountId": "3df7bf8e-e3bc-4b15-ac22-9c550106ed2f",
+    "spotValueUsd": 0.25693456,
+    "futuresNotionalUsd": 1823.83663,
+    "futuresUnrealizedPnl": -4214.92335,
+    "totalTrackedUsd": 1824.09356456,
+    "fetchedAt": "2026-04-01T09:22:36.470Z",
+    "createdAt": "2026-04-01T09:22:36.470Z",
+    "updatedAt": "2026-04-01T09:22:36.470Z"
   }
 ]

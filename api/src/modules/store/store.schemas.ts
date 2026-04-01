@@ -27,7 +27,8 @@ export const updateBinanceAccountSettingsSchema = z.object({
 
 export const linkAssetToAccountSchema = z.object({
   accountId: z.string().trim().uuid(),
-  assetId: z.string().trim().uuid()
+  assetId: z.string().trim().uuid(),
+  quantity: z.number().positive().optional()
 });
 
 export type CreateAccountInput = z.infer<typeof createAccountSchema>;

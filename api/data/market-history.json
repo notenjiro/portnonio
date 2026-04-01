@@ -1,7 +1,7 @@
 [
   {
     "date": "2026-03-31",
-    "assetId": "demo-stock-asset",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
     "symbol": "AAPL",
     "close": 222.13,
     "currency": "USD",
@@ -9,5 +9,16 @@
     "source": "twelvedata",
     "createdAt": "2026-04-01T08:35:07.643Z",
     "updatedAt": "2026-04-01T08:35:07.643Z"
+  },
+  {
+    "date": "2026-04-01",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+    "symbol": "AAPL",
+    "close": 253.78999,
+    "currency": "USD",
+    "changePercent": 2.90313,
+    "source": "twelvedata",
+    "createdAt": "2026-04-01T10:39:01.279Z",
+    "updatedAt": "2026-04-01T10:39:01.279Z"
   }
 ]

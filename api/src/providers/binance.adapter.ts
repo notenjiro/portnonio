@@ -7,6 +7,7 @@ import type { BinanceAccountSettings } from "../storage/storage.types";
 import type {
   BinanceFuturesPosition,
   BinanceFuturesPositionsResponse,
+  BinancePortfolioResponse,
   BinancePrivateAccountInfo,
   BinancePublicApiHealth,
   BinanceSpotHolding,
@@ -393,7 +394,10 @@ export async function getBinanceFuturesPositions(
         isolated: item.marginType === "isolated"
       };
     })
-    .filter((position) => position.quantity !== 0 || position.notionalUsd !== 0 || position.unrealizedPnl !== 0);
+    .filter(
+      (position) =>
+        position.quantity !== 0 || position.notionalUsd !== 0 || position.unrealizedPnl !== 0
+    );
 
   positions.sort((a, b) => b.notionalUsd - a.notionalUsd);
 
@@ -401,5 +405,48 @@ export async function getBinanceFuturesPositions(
     accountId,
     fetchedAt: new Date().toISOString(),
     positions
+  };
+}
+
+export async function getBinancePortfolio(
+  accountId: string
+): Promise<BinancePortfolioResponse> {
+  const [spotResult, futuresResult] = await Promise.all([
+    getBinanceSpotHoldings(accountId),
+    getBinanceFuturesPositions(accountId)
+  ]);
+
+  const totalSpotValueUsd = Number(
+    spotResult.holdings
+      .reduce((sum, holding) => sum + (holding.valueUsd ?? 0), 0)
+      .toFixed(8)
+  );
+
+  const pricedCount = spotResult.holdings.filter((holding) => holding.valueUsd !== null).length;
+  const unpricedCount = spotResult.holdings.length - pricedCount;
+
+  const totalNotionalUsd = Number(
+    futuresResult.positions.reduce((sum, position) => sum + position.notionalUsd, 0).toFixed(8)
+  );
+
+  const totalUnrealizedPnl = Number(
+    futuresResult.positions.reduce((sum, position) => sum + position.unrealizedPnl, 0).toFixed(8)
+  );
+
+  return {
+    accountId,
+    fetchedAt: new Date().toISOString(),
+    spot: {
+      holdings: spotResult.holdings,
+      totalValueUsd: totalSpotValueUsd,
+      pricedCount,
+      unpricedCount
+    },
+    futures: {
+      positions: futuresResult.positions,
+      totalNotionalUsd,
+      totalUnrealizedPnl,
+      positionCount: futuresResult.positions.length
+    }
   };
 }
