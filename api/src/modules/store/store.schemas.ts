@@ -19,6 +19,7 @@ export const createAssetSchema = z.object({
 
 export const updateBinanceAccountSettingsSchema = z.object({
   apiKey: z.string().trim().min(1).max(200),
+  apiSecret: z.string().trim().min(1).max(200),
   isTestnet: z.boolean().default(false),
   permissions: z.array(z.string().trim().min(1).max(100)).default([]),
   label: z.string().trim().min(1).max(100).optional()

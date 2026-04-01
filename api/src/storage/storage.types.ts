@@ -3,6 +3,7 @@ export type AssetCategory = "crypto" | "stock" | "fund";
 
 export interface BinanceAccountSettings {
   apiKey: string;
+  apiSecret: string;
   isTestnet: boolean;
   permissions: string[];
   label?: string;

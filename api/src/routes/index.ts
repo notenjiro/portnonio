@@ -20,10 +20,15 @@ import {
   updateBinanceAccountSettingsHandler
 } from "../modules/store/store.controller";
 import {
+  getBinanceFuturesPositionsHandler,
+  getBinancePrivateAccountInfoHandler,
+  getBinancePublicHealthHandler,
   getBinanceReadinessHandler,
+  getBinanceSpotHoldingsHandler,
   listProvidersHandler,
   providerHealthHandler
 } from "../modules/store/store.provider-controller";
+import { runBinanceSyncHandler } from "../modules/sync/sync.controller";
 
 export const apiRouter = Router();
 
@@ -38,7 +43,20 @@ apiRouter.get("/health", async (_req, res, next) => {
 
 apiRouter.get("/providers", listProvidersHandler);
 apiRouter.get("/providers/health", providerHealthHandler);
+apiRouter.get("/providers/binance/public-health", getBinancePublicHealthHandler);
 apiRouter.get("/providers/binance/accounts/:accountId/readiness", getBinanceReadinessHandler);
+apiRouter.get(
+  "/providers/binance/accounts/:accountId/private-account",
+  getBinancePrivateAccountInfoHandler
+);
+apiRouter.get(
+  "/providers/binance/accounts/:accountId/spot-holdings",
+  getBinanceSpotHoldingsHandler
+);
+apiRouter.get(
+  "/providers/binance/accounts/:accountId/futures-positions",
+  getBinanceFuturesPositionsHandler
+);
 
 apiRouter.get("/history/binance", getBinanceHistoryHandler);
 apiRouter.get("/history/market", getMarketHistoryHandler);
@@ -46,6 +64,8 @@ apiRouter.get("/history/fund", getFundHistoryHandler);
 apiRouter.get("/history/calendar", getPortfolioCalendarHandler);
 apiRouter.get("/history/snapshots", getPortfolioSnapshotsHandler);
 apiRouter.post("/history/seed-demo", seedDemoHistoryHandler);
+
+apiRouter.post("/sync/binance/accounts/:accountId", runBinanceSyncHandler);
 
 apiRouter.get("/store", getStoreHandler);
 apiRouter.post("/store/bootstrap", bootstrapStoreHandler);

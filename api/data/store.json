@@ -8,16 +8,17 @@
       "source": "binance",
       "provider": "binance",
       "createdAt": "2026-04-01T07:09:58.432Z",
-      "updatedAt": "2026-04-01T08:21:30.070Z",
+      "updatedAt": "2026-04-01T08:59:50.756Z",
       "settings": {
-        "apiKey": "demo-key",
+        "apiKey": "MmQeN1chazBHZIwZssd7MMuemsGQBY67MpV0iYb4iPdUVECKd85JAJmEQ6uuOAvj",
+        "apiSecret": "jved4PEma1ZqlvkbUXSZ8dhrkw09o3FdgMuvAl8zvG9qrzTI5yofvuMbSh6IWCXs",
         "isTestnet": false,
         "permissions": [
           "spot",
           "futures"
         ],
         "label": "main-account",
-        "lastValidatedAt": null
+        "lastValidatedAt": "2026-04-01T08:59:50.754Z"
       }
     }
   ],

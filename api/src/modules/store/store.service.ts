@@ -136,6 +136,7 @@ export async function updateBinanceAccountSettings(
 
   account.settings = {
     apiKey: input.apiKey,
+    apiSecret: input.apiSecret,
     isTestnet: input.isTestnet,
     permissions: input.permissions,
     label: input.label,
