@@ -1,0 +1,20 @@
+{
+  "fund-nav:SCBS&P500": {
+    "value": {
+      "symbol": "SCBS&P500",
+      "nav": 3,
+      "priceDate": "2026-04-01",
+      "source": "https://www.scbam.com/en/fund/foreign-investment-fund-equity/fund-information/scbs-p500"
+    },
+    "expiresAt": 1775012414407
+  },
+  "fund-nav:SCBGOLDHRMF": {
+    "value": {
+      "symbol": "SCBGOLDHRMF",
+      "nav": 3,
+      "priceDate": "2026-04-01",
+      "source": "https://www.scbam.com/en/fund/default/fund-information/SCBGOLDHRMF"
+    },
+    "expiresAt": 1775016029030
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "totalValue": 5703.481348577799,
+  "todayPnL": -4247.72488349,
+  "connectedAccounts": [
+    {
+      "id": "fbd7d032-bc7f-4378-b4fb-0e55c0f84564",
+      "provider": "binance",
+      "apiKey": "MmQeN1chazBHZIwZssd7MMuemsGQBY67MpV0iYb4iPdUVECKd85JAJmEQ6uuOAvj",
+      "apiSecret": "jved4PEma1ZqlvkbUXSZ8dhrkw09o3FdgMuvAl8zvG9qrzTI5yofvuMbSh6IWCXs",
+      "createdAt": "2026-04-01T03:24:15.263Z"
+    }
+  ],
+  "snapshots": [
+    {
+      "date": "2026-04-01",
+      "totalValue": 5703.481348577799,
+      "spotValue": 0.256706477799,
+      "futuresWallet": 5703.2246421,
+      "futuresUnrealizedPnL": -4247.72488349,
+      "stockValue": 0,
+      "fundValue": 0,
+      "cashBalance": 0
+    }
+  ],
+  "stockAssets": [],
+  "stockOrders": [],
+  "stockPrices": []
+}

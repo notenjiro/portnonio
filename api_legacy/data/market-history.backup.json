@@ -1,0 +1,208 @@
+{
+  "SCBS&P500": {
+    "type": "fund",
+    "market": "FUND",
+    "currency": "THB",
+    "history": {
+      "2026-03-25": {
+        "nav": 3,
+        "source": "backfill_nav",
+        "syncedAt": "2026-03-25T16:00:27.438Z"
+      },
+      "2026-03-26": {
+        "nav": 3,
+        "source": "fund_nav_daily",
+        "syncedAt": "2026-03-26T16:00:28.100Z"
+      },
+      "2026-03-27": {
+        "nav": 3,
+        "source": "fund_nav_daily",
+        "syncedAt": "2026-03-27T16:00:29.093Z"
+      },
+      "2026-03-28": {
+        "nav": 3,
+        "source": "fund_nav_daily",
+        "syncedAt": "2026-03-28T16:00:29.688Z"
+      },
+      "2026-03-30": {
+        "nav": 3,
+        "source": "fund_nav_live",
+        "syncedAt": "2026-03-30T16:00:36.859Z"
+      },
+      "2026-03-31": {
+        "nav": 3,
+        "navBase": 0.09132,
+        "currency": "THB",
+        "baseCurrency": "USD",
+        "source": "fund_nav_daily",
+        "fxRateToBase": 0.03044,
+        "fxRateDate": "2026-03-31",
+        "fxSource": "frankfurter",
+        "syncedAt": "2026-03-31T15:00:03.327Z"
+      }
+    },
+    "baseCurrency": "USD"
+  },
+  "SCBGOLDHRMF": {
+    "type": "fund",
+    "market": "FUND",
+    "currency": "THB",
+    "history": {
+      "2026-03-30": {
+        "nav": 3,
+        "source": "fund_nav_daily",
+        "syncedAt": "2026-03-30T16:00:36.859Z"
+      },
+      "2026-03-31": {
+        "nav": 3,
+        "navBase": 0.09132,
+        "currency": "THB",
+        "baseCurrency": "USD",
+        "source": "fund_nav_daily",
+        "fxRateToBase": 0.03044,
+        "fxRateDate": "2026-03-31",
+        "fxSource": "frankfurter",
+        "syncedAt": "2026-03-31T15:00:03.327Z"
+      }
+    },
+    "baseCurrency": "USD"
+  },
+  "K-USXNDQ-A(D)": {
+    "type": "fund",
+    "market": "FUND",
+    "currency": "THB",
+    "history": {
+      "2026-03-30": {
+        "nav": 5,
+        "source": "fund_nav_daily",
+        "syncedAt": "2026-03-30T16:00:36.859Z"
+      },
+      "2026-03-31": {
+        "nav": 5,
+        "navBase": 0.1522,
+        "currency": "THB",
+        "baseCurrency": "USD",
+        "source": "fund_nav_daily",
+        "fxRateToBase": 0.03044,
+        "fxRateDate": "2026-03-30",
+        "fxSource": "frankfurter",
+        "syncedAt": "2026-03-31T15:00:03.327Z"
+      }
+    },
+    "baseCurrency": "USD"
+  },
+  "8e8cc975-4760-4fdb-8982-b87c694d9ce2": {
+    "2026-03-24": {
+      "priceBase": 0.09186
+    },
+    "2026-03-25": {
+      "priceBase": 0.09204
+    },
+    "2026-03-01": {
+      "priceBase": 0.09650999999999998
+    },
+    "2026-03-02": {
+      "priceBase": 0.09522
+    },
+    "2026-03-03": {
+      "priceBase": 0.09447
+    },
+    "2026-03-04": {
+      "priceBase": 0.09531
+    },
+    "2026-03-05": {
+      "priceBase": 0.09473999999999999
+    },
+    "2026-03-06": {
+      "priceBase": 0.09381
+    },
+    "2026-03-07": {
+      "priceBase": 0.09381
+    },
+    "2026-03-08": {
+      "priceBase": 0.09381
+    },
+    "2026-03-09": {
+      "priceBase": 0.09354
+    },
+    "2026-03-10": {
+      "priceBase": 0.09486
+    },
+    "2026-03-11": {
+      "priceBase": 0.09444
+    },
+    "2026-03-12": {
+      "priceBase": 0.09392999999999999
+    },
+    "2026-03-13": {
+      "priceBase": 0.09318
+    },
+    "2026-03-14": {
+      "priceBase": 0.09318
+    },
+    "2026-03-15": {
+      "priceBase": 0.09318
+    },
+    "2026-03-16": {
+      "priceBase": 0.0927
+    },
+    "2026-03-17": {
+      "priceBase": 0.09282
+    },
+    "2026-03-18": {
+      "priceBase": 0.09183
+    },
+    "2026-03-19": {
+      "priceBase": 0.09117
+    },
+    "2026-03-20": {
+      "priceBase": 0.09159
+    },
+    "2026-03-21": {
+      "priceBase": 0.09159
+    },
+    "2026-03-22": {
+      "priceBase": 0.09159
+    },
+    "2026-03-23": {
+      "priceBase": 0.093
+    },
+    "2026-03-26": {
+      "priceBase": 0.0912
+    },
+    "2026-03-27": {
+      "priceBase": 0.09104999999999999
+    },
+    "2026-03-28": {
+      "priceBase": 0.09104999999999999
+    },
+    "2026-03-30": {
+      "priceBase": 0.09132
+    },
+    "2026-03-31": {
+      "priceBase": 0.09132
+    },
+    "2026-04-01": {
+      "priceBase": 0.09159
+    }
+  },
+  "89422976-875c-49f2-89b8-e6cccf84e873": {
+    "2026-03-30": {
+      "priceBase": 0.09132
+    },
+    "2026-03-31": {
+      "priceBase": 0.09132
+    },
+    "2026-04-01": {
+      "priceBase": 0.09159
+    }
+  },
+  "9a200900-da91-412b-9aa6-3b912b952f1a": {
+    "2026-03-27": {
+      "priceBase": 0.15175
+    },
+    "2026-03-30": {
+      "priceBase": 0.1522
+    }
+  }
+}
