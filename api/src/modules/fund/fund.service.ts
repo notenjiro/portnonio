@@ -1,13 +1,9 @@
-import { getSecFundNav } from "../../providers/sec.adapter";
+import { getSecFundNav, resolveFundProjIdByClassName } from "../../providers/sec.adapter";
 import { NotFoundError, ValidationError } from "../../shared/errors";
 import { readFundHistory, writeFundHistory } from "../../storage/history.repository";
 import { readStore } from "../../storage/store.repository";
 import type { FundDailyHistoryRecord } from "../../storage/history.types";
 import type { FundNavRefreshResult } from "./fund.types";
-
-function getUtcDateString(date: Date): string {
-  return date.toISOString().slice(0, 10);
-}
 
 export async function refreshFundNav(assetId: string): Promise<FundNavRefreshResult> {
   const store = await readStore();
@@ -21,12 +17,12 @@ export async function refreshFundNav(assetId: string): Promise<FundNavRefreshRes
     throw new ValidationError("Asset is not a fund asset");
   }
 
-  const navResult = await getSecFundNav(asset.symbol);
+  const projId = await resolveFundProjIdByClassName(asset.symbol);
+  const navResult = await getSecFundNav(asset.symbol, projId);
   const history = await readFundHistory();
 
-  const now = new Date();
-  const nowIso = now.toISOString();
-  const date = getUtcDateString(now);
+  const nowIso = new Date().toISOString();
+  const date = navResult.navDate;
 
   const record: FundDailyHistoryRecord = {
     date,

@@ -52,6 +52,16 @@
       "currency": "THB",
       "createdAt": "2026-04-01T10:39:19.496Z",
       "updatedAt": "2026-04-01T10:39:19.496Z"
+    },
+    {
+      "id": "6ba54332-e6b1-4857-936b-b4ef4b1b6543",
+      "symbol": "SCBS&P500",
+      "name": "SCB S&P500 Fund",
+      "source": "fund",
+      "category": "fund",
+      "currency": "THB",
+      "createdAt": "2026-04-01T16:51:06.565Z",
+      "updatedAt": "2026-04-01T16:51:06.565Z"
     }
   ],
   "accountAssetLinks": [

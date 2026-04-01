@@ -1,5 +1,16 @@
 [
   {
+    "date": "2026-03-17",
+    "assetId": "dbdf0707-0bb4-4410-89a6-18a8daaa156d",
+    "symbol": "SCBSET50",
+    "nav": 22.2569,
+    "currency": "THB",
+    "changePercent": 2.62642192,
+    "source": "sec",
+    "createdAt": "2026-04-01T16:50:17.269Z",
+    "updatedAt": "2026-04-01T16:50:17.269Z"
+  },
+  {
     "date": "2026-03-31",
     "assetId": "demo-fund-asset",
     "symbol": "SCBSET50",
