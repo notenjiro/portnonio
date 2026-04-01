@@ -1,9 +1,20 @@
 export type AccountSource = "binance" | "stock" | "fund";
+export type AssetCategory = "crypto" | "stock" | "fund";
+
+export interface BinanceAccountSettings {
+  apiKey: string;
+  isTestnet: boolean;
+  permissions: string[];
+  label?: string;
+  lastValidatedAt: string | null;
+}
 
 export interface AccountRecord {
   id: string;
   name: string;
   source: AccountSource;
+  provider: string;
+  settings: BinanceAccountSettings | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -13,7 +24,16 @@ export interface AssetRecord {
   symbol: string;
   name: string;
   source: AccountSource;
+  category: AssetCategory;
   currency: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface AccountAssetLinkRecord {
+  id: string;
+  accountId: string;
+  assetId: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -23,4 +43,5 @@ export interface StoreData {
   baseCurrency: "USD";
   accounts: AccountRecord[];
   assets: AssetRecord[];
+  accountAssetLinks: AccountAssetLinkRecord[];
 }

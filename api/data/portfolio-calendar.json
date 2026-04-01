@@ -1,0 +1,26 @@
+[
+  {
+    "date": "2026-03-30",
+    "totalPnl": 96,
+    "realizedPnl": 120.5,
+    "unrealizedPnl": -25.2,
+    "binancePnl": 96,
+    "stockPnl": null,
+    "endValueUsd": 15120.45,
+    "hasData": true,
+    "createdAt": "2026-04-01T08:35:07.643Z",
+    "updatedAt": "2026-04-01T08:35:07.643Z"
+  },
+  {
+    "date": "2026-03-31",
+    "totalPnl": 12.5,
+    "realizedPnl": -40,
+    "unrealizedPnl": 18.25,
+    "binancePnl": -19.99,
+    "stockPnl": 32.49,
+    "endValueUsd": 15222.59,
+    "hasData": true,
+    "createdAt": "2026-04-01T08:35:07.643Z",
+    "updatedAt": "2026-04-01T08:35:07.643Z"
+  }
+]

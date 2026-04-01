@@ -1,0 +1,24 @@
+[
+  {
+    "date": "2026-03-30",
+    "totalValueUsd": 18020.45,
+    "binanceValueUsd": 15120.45,
+    "stockValueUsd": 2400,
+    "fundValueUsd": 500,
+    "cashValueUsd": 0,
+    "totalPnlUsd": 96,
+    "createdAt": "2026-04-01T08:35:07.643Z",
+    "updatedAt": "2026-04-01T08:35:07.643Z"
+  },
+  {
+    "date": "2026-03-31",
+    "totalValueUsd": 18122.59,
+    "binanceValueUsd": 15100.46,
+    "stockValueUsd": 2522.13,
+    "fundValueUsd": 500,
+    "cashValueUsd": 0,
+    "totalPnlUsd": 12.5,
+    "createdAt": "2026-04-01T08:35:07.643Z",
+    "updatedAt": "2026-04-01T08:35:07.643Z"
+  }
+]

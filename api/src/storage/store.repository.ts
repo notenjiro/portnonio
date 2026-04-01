@@ -7,14 +7,26 @@ const defaultStoreData: StoreData = {
   baseCurrency: "USD",
   accounts: [],
   assets: [],
+  accountAssetLinks: []
 };
 
+function normalizeStoreData(input: Partial<StoreData> | null | undefined): StoreData {
+  return {
+    version: 1,
+    baseCurrency: "USD",
+    accounts: Array.isArray(input?.accounts) ? input.accounts : [],
+    assets: Array.isArray(input?.assets) ? input.assets : [],
+    accountAssetLinks: Array.isArray(input?.accountAssetLinks) ? input.accountAssetLinks : []
+  };
+}
+
 export async function readStore(): Promise<StoreData> {
-  return readJsonFile<StoreData>(paths.storeFile, defaultStoreData);
+  const raw = await readJsonFile<Partial<StoreData>>(paths.storeFile, defaultStoreData);
+  return normalizeStoreData(raw);
 }
 
 export async function writeStore(data: StoreData): Promise<void> {
-  await writeJsonFile(paths.storeFile, data);
+  await writeJsonFile(paths.storeFile, normalizeStoreData(data));
 }
 
 export function getDefaultStoreData(): StoreData {

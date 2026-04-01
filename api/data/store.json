@@ -1,6 +1,45 @@
 {
   "version": 1,
   "baseCurrency": "USD",
-  "accounts": [],
-  "assets": []
+  "accounts": [
+    {
+      "id": "3df7bf8e-e3bc-4b15-ac22-9c550106ed2f",
+      "name": "My Binance",
+      "source": "binance",
+      "provider": "binance",
+      "createdAt": "2026-04-01T07:09:58.432Z",
+      "updatedAt": "2026-04-01T08:21:30.070Z",
+      "settings": {
+        "apiKey": "demo-key",
+        "isTestnet": false,
+        "permissions": [
+          "spot",
+          "futures"
+        ],
+        "label": "main-account",
+        "lastValidatedAt": null
+      }
+    }
+  ],
+  "assets": [
+    {
+      "id": "5bc422cc-b19f-41df-b358-7b26c365da5e",
+      "symbol": "BTCUSDT",
+      "name": "Bitcoin / Tether",
+      "source": "binance",
+      "category": "crypto",
+      "currency": "USD",
+      "createdAt": "2026-04-01T07:10:11.408Z",
+      "updatedAt": "2026-04-01T07:10:11.408Z"
+    }
+  ],
+  "accountAssetLinks": [
+    {
+      "id": "0c6dc20d-ccf3-41f3-8a56-e760db1e9f84",
+      "accountId": "3df7bf8e-e3bc-4b15-ac22-9c550106ed2f",
+      "assetId": "5bc422cc-b19f-41df-b358-7b26c365da5e",
+      "createdAt": "2026-04-01T08:23:38.488Z",
+      "updatedAt": "2026-04-01T08:23:38.488Z"
+    }
+  ]
 }

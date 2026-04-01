@@ -1,0 +1,13 @@
+[
+  {
+    "date": "2026-03-31",
+    "assetId": "demo-stock-asset",
+    "symbol": "AAPL",
+    "close": 222.13,
+    "currency": "USD",
+    "changePercent": 1.24,
+    "source": "twelvedata",
+    "createdAt": "2026-04-01T08:35:07.643Z",
+    "updatedAt": "2026-04-01T08:35:07.643Z"
+  }
+]
