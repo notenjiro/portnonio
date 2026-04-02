@@ -42,8 +42,10 @@ import {
 } from "../modules/store/store.provider-controller";
 import {
   persistBinanceSnapshotHandler,
-  runBinanceSyncHandler
+  runBinanceSyncHandler,
+  backfillBinanceRealizedHandler
 } from "../modules/sync/sync.controller";
+import { getRealizedPnlHandler } from "../modules/pnl/pnl.controller";
 
 export const apiRouter = Router();
 
@@ -116,3 +118,10 @@ apiRouter.post("/store/account-asset-links", linkAssetToAccountHandler);
 apiRouter.get("/providers/sec/amc", getSecAmcListHandler);
 apiRouter.get("/providers/sec/specifications", getSecFundSpecificationsHandler);
 apiRouter.get("/providers/sec/resolve-proj-id", resolveSecFundProjIdHandler);
+
+apiRouter.get("/pnl/realized", getRealizedPnlHandler);
+
+apiRouter.post(
+  "/sync/binance/accounts/:accountId/backfill-realized",
+  backfillBinanceRealizedHandler
+);

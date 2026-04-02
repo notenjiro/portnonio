@@ -10,6 +10,7 @@ export const paths = {
   marketHistoryFile: path.join(projectRoot, "data", "market-history.json"),
   fundHistoryFile: path.join(projectRoot, "data", "fund-history.json"),
   fxRatesFile: path.join(projectRoot, "data", "fx-rates.json"),
+  fxHistoryFile: path.join(projectRoot, "data", "fx-history.json"),
   portfolioCalendarFile: path.join(projectRoot, "data", "portfolio-calendar.json"),
   portfolioSnapshotsFile: path.join(projectRoot, "data", "portfolio-snapshots.json")
 } as const;

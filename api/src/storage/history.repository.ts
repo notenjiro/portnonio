@@ -5,7 +5,8 @@ import type {
   FundDailyHistoryRecord,
   MarketDailyHistoryRecord,
   PortfolioCalendarDayRecord,
-  PortfolioSnapshotRecord
+  PortfolioSnapshotRecord,
+  FxDailyRateRecord
 } from "./history.types";
 
 async function readArrayFile<T>(filePath: string): Promise<T[]> {
@@ -56,4 +57,12 @@ export async function readPortfolioSnapshots(): Promise<PortfolioSnapshotRecord[
 
 export async function writePortfolioSnapshots(records: PortfolioSnapshotRecord[]): Promise<void> {
   await writeJsonFile(paths.portfolioSnapshotsFile, records);
+}
+
+export async function readFxHistory(): Promise<FxDailyRateRecord[]> {
+  return readArrayFile<FxDailyRateRecord>(paths.fxHistoryFile);
+}
+
+export async function writeFxHistory(records: FxDailyRateRecord[]): Promise<void> {
+  await writeJsonFile(paths.fxHistoryFile, records);
 }

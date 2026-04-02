@@ -110,3 +110,14 @@ export interface SecProviderHealth {
   configured: boolean;
   baseUrl: string;
 }
+
+export interface BinanceFuturesIncomeRecord {
+  symbol: string;
+  incomeType: string;
+  income: number;
+  asset: string;
+  info: string;
+  time: number;
+  tranId: number;
+  tradeId?: string;
+}

@@ -1,0 +1,29 @@
+[
+  {
+    "date": "2026-03-17",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03052996,
+    "source": "twelvedata",
+    "createdAt": "2026-04-02T02:44:35.783Z",
+    "updatedAt": "2026-04-02T02:44:35.783Z"
+  },
+  {
+    "date": "2026-03-31",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03052996,
+    "source": "twelvedata",
+    "createdAt": "2026-04-02T02:44:36.147Z",
+    "updatedAt": "2026-04-02T02:44:36.147Z"
+  },
+  {
+    "date": "2026-04-02",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03057305,
+    "source": "twelvedata",
+    "createdAt": "2026-04-02T02:18:21.699Z",
+    "updatedAt": "2026-04-02T02:18:21.699Z"
+  }
+]

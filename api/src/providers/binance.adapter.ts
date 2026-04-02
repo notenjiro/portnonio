@@ -39,6 +39,17 @@ interface BinanceFuturesPositionRiskResponseItem {
   marginAsset?: string;
 }
 
+interface BinanceFuturesIncomeApiItem {
+  symbol: string;
+  incomeType: string;
+  income: string;
+  asset: string;
+  info: string;
+  time: number;
+  tranId: number;
+  tradeId?: string;
+}
+
 function getApiKeyPreview(apiKey: string): string {
   if (apiKey.length <= 8) {
     return apiKey;
@@ -449,4 +460,36 @@ export async function getBinancePortfolio(
       positionCount: futuresResult.positions.length
     }
   };
+}
+
+export async function getBinanceFuturesIncomeHistory(
+  accountId: string,
+  params: {
+    incomeType?: string;
+    startTime?: number;
+    endTime?: number;
+    limit?: number;
+  } = {}
+): Promise<import("./provider.types").BinanceFuturesIncomeRecord[]> {
+  const response = await signedFuturesGet<BinanceFuturesIncomeApiItem[]>(
+    accountId,
+    "/fapi/v1/income",
+    {
+      incomeType: params.incomeType ?? "",
+      startTime: params.startTime ?? "",
+      endTime: params.endTime ?? "",
+      limit: params.limit ?? 1000
+    }
+  );
+
+  return response.map((item) => ({
+    symbol: item.symbol,
+    incomeType: item.incomeType,
+    income: Number(item.income),
+    asset: item.asset,
+    info: item.info,
+    time: item.time,
+    tranId: item.tranId,
+    tradeId: item.tradeId
+  }));
 }

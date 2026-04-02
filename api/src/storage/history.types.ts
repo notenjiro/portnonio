@@ -5,6 +5,12 @@ export interface BinanceDailyHistoryRecord {
   futuresNotionalUsd: number;
   futuresUnrealizedPnl: number;
   totalTrackedUsd: number;
+
+  realizedPnl?: number;
+  funding?: number;
+  fees?: number;
+  netRealizedPnl?: number;
+
   fetchedAt: string;
   createdAt: string;
   updatedAt: string;
@@ -41,6 +47,7 @@ export interface PortfolioCalendarDayRecord {
   unrealizedPnl: number | null;
   binancePnl: number | null;
   stockPnl: number | null;
+  fundPnl: number | null;
   endValueUsd: number | null;
   hasData: boolean;
   createdAt: string;
@@ -55,6 +62,16 @@ export interface PortfolioSnapshotRecord {
   fundValueUsd: number;
   cashValueUsd: number;
   totalPnlUsd: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface FxDailyRateRecord {
+  date: string; // YYYY-MM-DD
+  base: string; // e.g. THB
+  quote: string; // e.g. USD
+  rate: number; // THB -> USD
+  source: string;
   createdAt: string;
   updatedAt: string;
 }
