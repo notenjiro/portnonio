@@ -1,6 +1,26 @@
 import type { CalendarResponse } from "../calendar/calendar.types";
 import type { OverviewResponse } from "../overview/overview.types";
-import type { BinancePortfolioResponse } from "../../providers/provider.types";
+import type {
+  BinanceFuturesPosition,
+  BinanceSpotHolding
+} from "../../providers/provider.types";
+
+export interface AggregatedBinancePortfolioResponse {
+  fetchedAt: string | null;
+  accountCount: number;
+  spot: {
+    holdings: BinanceSpotHolding[];
+    totalValueUsd: number;
+    pricedCount: number;
+    unpricedCount: number;
+  };
+  futures: {
+    positions: BinanceFuturesPosition[];
+    totalNotionalUsd: number;
+    totalUnrealizedPnl: number;
+    positionCount: number;
+  };
+}
 
 export interface DashboardSummaryCard {
   key: string;
@@ -28,7 +48,7 @@ export interface DashboardAllocationItem {
 export interface DashboardResponse {
   overview: OverviewResponse;
   calendar: CalendarResponse;
-  latestBinancePortfolio: BinancePortfolioResponse | null;
+  latestBinancePortfolio: AggregatedBinancePortfolioResponse | null;
   summaryCards: DashboardSummaryCard[];
   risk: DashboardRiskSection | null;
   allocation: DashboardAllocationItem[];

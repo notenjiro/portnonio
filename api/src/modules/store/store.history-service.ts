@@ -1,9 +1,6 @@
 import {
   readBinanceHistory,
   readMarketHistory,
-  writeBinanceHistory,
-  writeFundHistory,
-  writeMarketHistory,
   writePortfolioCalendar,
   writePortfolioSnapshots
 } from "../../storage/history.repository";
@@ -11,7 +8,6 @@ import { readStore } from "../../storage/store.repository";
 
 import type {
   BinanceDailyHistoryRecord,
-  FundDailyHistoryRecord,
   MarketDailyHistoryRecord,
   PortfolioCalendarDayRecord,
   PortfolioSnapshotRecord
@@ -27,9 +23,13 @@ function roundNumber(value: number): number {
   return Number(value.toFixed(8));
 }
 
-/**
- * ✅ NEW: quantity-aware stock pnl
- */
+interface AggregatedBinanceDay {
+  date: string;
+  futuresUnrealizedPnl: number;
+  totalTrackedUsd: number;
+  createdAt: string;
+}
+
 function buildStockDailyPnlMap(
   marketHistory: MarketDailyHistoryRecord[],
   links: AccountAssetLinkRecord[]
@@ -42,7 +42,6 @@ function buildStockDailyPnlMap(
     byAsset.set(record.assetId, list);
   }
 
-  // 🔥 quantity map
   const quantityByAsset = new Map<string, number>();
   for (const link of links) {
     quantityByAsset.set(link.assetId, link.quantity ?? 1);
@@ -57,10 +56,11 @@ function buildStockDailyPnlMap(
       const previous = sorted[i - 1];
       const current = sorted[i];
 
-      if (!previous || !current) continue;
+      if (!previous || !current) {
+        continue;
+      }
 
       const quantity = quantityByAsset.get(current.assetId) ?? 1;
-
       const delta = roundNumber((current.close - previous.close) * quantity);
 
       stockPnlByDate.set(
@@ -71,6 +71,44 @@ function buildStockDailyPnlMap(
   }
 
   return stockPnlByDate;
+}
+
+function aggregateBinanceHistoryByDate(
+  records: BinanceDailyHistoryRecord[]
+): Map<string, AggregatedBinanceDay> {
+  const byDate = new Map<string, AggregatedBinanceDay>();
+
+  const sorted = [...records].sort((a, b) => {
+    if (a.date === b.date) {
+      return a.createdAt.localeCompare(b.createdAt);
+    }
+    return a.date.localeCompare(b.date);
+  });
+
+  for (const record of sorted) {
+    const existing = byDate.get(record.date);
+
+    if (!existing) {
+      byDate.set(record.date, {
+        date: record.date,
+        futuresUnrealizedPnl: roundNumber(record.futuresUnrealizedPnl),
+        totalTrackedUsd: roundNumber(record.totalTrackedUsd),
+        createdAt: record.createdAt
+      });
+      continue;
+    }
+
+    byDate.set(record.date, {
+      date: record.date,
+      futuresUnrealizedPnl: roundNumber(
+        existing.futuresUnrealizedPnl + record.futuresUnrealizedPnl
+      ),
+      totalTrackedUsd: roundNumber(existing.totalTrackedUsd + record.totalTrackedUsd),
+      createdAt: existing.createdAt <= record.createdAt ? existing.createdAt : record.createdAt
+    });
+  }
+
+  return byDate;
 }
 
 export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
@@ -84,42 +122,40 @@ export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
   ]);
 
   const now = nowIso();
-
   const links = store.accountAssetLinks ?? [];
 
   const stockPnlByDate = buildStockDailyPnlMap(marketHistory, links);
+  const aggregatedBinanceByDate = aggregateBinanceHistoryByDate(binanceHistory);
 
   const calendarByDate = new Map<string, PortfolioCalendarDayRecord>();
 
-  // ======================
-  // BINANCE + STOCK MERGE
-  // ======================
-  for (const record of binanceHistory) {
-    const stockPnl = stockPnlByDate.get(record.date) ?? null;
+  // 1) วันที่มีข้อมูล Binance
+  for (const binanceDay of aggregatedBinanceByDate.values()) {
+    const stockPnl = stockPnlByDate.get(binanceDay.date) ?? null;
 
     const totalPnl = roundNumber(
-      record.futuresUnrealizedPnl + (stockPnl ?? 0)
+      binanceDay.futuresUnrealizedPnl + (stockPnl ?? 0)
     );
 
-    calendarByDate.set(record.date, {
-      date: record.date,
+    calendarByDate.set(binanceDay.date, {
+      date: binanceDay.date,
       totalPnl,
       realizedPnl: null,
-      unrealizedPnl: record.futuresUnrealizedPnl,
-      binancePnl: record.futuresUnrealizedPnl,
+      unrealizedPnl: binanceDay.futuresUnrealizedPnl,
+      binancePnl: binanceDay.futuresUnrealizedPnl,
       stockPnl,
-      endValueUsd: record.totalTrackedUsd,
+      endValueUsd: binanceDay.totalTrackedUsd,
       hasData: true,
-      createdAt: record.createdAt ?? now,
+      createdAt: binanceDay.createdAt ?? now,
       updatedAt: now
     });
   }
 
-  // ======================
-  // STOCK ONLY DAYS
-  // ======================
+  // 2) วันที่มีเฉพาะ stock
   for (const [date, stockPnl] of stockPnlByDate.entries()) {
-    if (calendarByDate.has(date)) continue;
+    if (calendarByDate.has(date)) {
+      continue;
+    }
 
     calendarByDate.set(date, {
       date,
@@ -135,17 +171,16 @@ export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
     });
   }
 
-  const calendar: PortfolioCalendarDayRecord[] = [...calendarByDate.values()].sort(
-    (a, b) => a.date.localeCompare(b.date)
+  const calendar: PortfolioCalendarDayRecord[] = [...calendarByDate.values()].sort((a, b) =>
+    a.date.localeCompare(b.date)
   );
 
-  // ======================
-  // STOCK VALUE (quantity-aware)
-  // ======================
+  // latest market per asset
   const latestMarketByAsset = new Map<string, MarketDailyHistoryRecord>();
-
   const sortedMarket = [...marketHistory].sort((a, b) => {
-    if (a.date === b.date) return a.updatedAt.localeCompare(b.updatedAt);
+    if (a.date === b.date) {
+      return a.updatedAt.localeCompare(b.updatedAt);
+    }
     return a.date.localeCompare(b.date);
   });
 
@@ -165,15 +200,9 @@ export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
     }, 0)
   );
 
-  // ======================
-  // SNAPSHOT
-  // ======================
   const snapshots: PortfolioSnapshotRecord[] = calendar.map((day) => {
-    const binanceRecord =
-      binanceHistory.find((record) => record.date === day.date) ?? null;
-
-    const binanceValueUsd = binanceRecord?.totalTrackedUsd ?? 0;
-
+    const aggregatedBinanceDay = aggregatedBinanceByDate.get(day.date) ?? null;
+    const binanceValueUsd = aggregatedBinanceDay?.totalTrackedUsd ?? 0;
     const totalValueUsd = roundNumber(binanceValueUsd + stockValueUsd);
 
     return {

@@ -3,7 +3,6 @@ import {
   readMarketHistory,
   readPortfolioCalendar
 } from "../../storage/history.repository";
-
 import { readStore } from "../../storage/store.repository";
 
 import type {
@@ -13,17 +12,63 @@ import type {
 
 import type { OverviewResponse } from "./overview.types";
 
-function getLatestBinanceRecord(
-  records: BinanceDailyHistoryRecord[]
-): BinanceDailyHistoryRecord | null {
-  if (records.length === 0) return null;
+function roundNumber(value: number): number {
+  return Number(value.toFixed(8));
+}
 
-  const sorted = [...records].sort((a, b) => {
-    if (a.date === b.date) return a.updatedAt.localeCompare(b.updatedAt);
-    return a.date.localeCompare(b.date);
-  });
+function getLatestBinanceDate(records: BinanceDailyHistoryRecord[]): string | null {
+  if (records.length === 0) {
+    return null;
+  }
 
-  return sorted[sorted.length - 1] ?? null;
+  const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+  return sorted[sorted.length - 1]?.date ?? null;
+}
+
+function aggregateLatestBinanceDay(records: BinanceDailyHistoryRecord[]): {
+  date: string | null;
+  fetchedAt: string | null;
+  totalTrackedUsd: number;
+  spotValueUsd: number;
+  futuresNotionalUsd: number;
+  futuresUnrealizedPnl: number;
+} {
+  const latestDate = getLatestBinanceDate(records);
+
+  if (!latestDate) {
+    return {
+      date: null,
+      fetchedAt: null,
+      totalTrackedUsd: 0,
+      spotValueUsd: 0,
+      futuresNotionalUsd: 0,
+      futuresUnrealizedPnl: 0
+    };
+  }
+
+  const sameDay = records.filter((record) => record.date === latestDate);
+
+  const fetchedAt =
+    [...sameDay]
+      .sort((a, b) => a.updatedAt.localeCompare(b.updatedAt))
+      .at(-1)?.fetchedAt ?? null;
+
+  return {
+    date: latestDate,
+    fetchedAt,
+    totalTrackedUsd: roundNumber(
+      sameDay.reduce((sum, record) => sum + record.totalTrackedUsd, 0)
+    ),
+    spotValueUsd: roundNumber(
+      sameDay.reduce((sum, record) => sum + record.spotValueUsd, 0)
+    ),
+    futuresNotionalUsd: roundNumber(
+      sameDay.reduce((sum, record) => sum + record.futuresNotionalUsd, 0)
+    ),
+    futuresUnrealizedPnl: roundNumber(
+      sameDay.reduce((sum, record) => sum + record.futuresUnrealizedPnl, 0)
+    )
+  };
 }
 
 function getLatestMarketRecords(
@@ -32,7 +77,10 @@ function getLatestMarketRecords(
   const latestByAsset = new Map<string, MarketDailyHistoryRecord>();
 
   const sorted = [...records].sort((a, b) => {
-    if (a.date === b.date) return a.updatedAt.localeCompare(b.updatedAt);
+    if (a.date === b.date) {
+      return a.updatedAt.localeCompare(b.updatedAt);
+    }
+
     return a.date.localeCompare(b.date);
   });
 
@@ -51,46 +99,38 @@ export async function getOverviewData(): Promise<OverviewResponse> {
     readStore()
   ]);
 
-  const latestBinance = getLatestBinanceRecord(binanceHistory);
+  const latestBinance = aggregateLatestBinanceDay(binanceHistory);
   const latestMarketRecords = getLatestMarketRecords(marketHistory);
 
-  // 🔥 quantity map
   const quantityByAsset = new Map<string, number>();
   for (const link of store.accountAssetLinks ?? []) {
     quantityByAsset.set(link.assetId, link.quantity ?? 1);
   }
 
-  // 🔥 FIX: quantity-aware stock value
-  const stockTrackedUsd = Number(
-    latestMarketRecords
-      .reduce((sum, record) => {
-        const qty = quantityByAsset.get(record.assetId) ?? 1;
-        return sum + record.close * qty;
-      }, 0)
-      .toFixed(8)
+  const stockTrackedUsd = roundNumber(
+    latestMarketRecords.reduce((sum, record) => {
+      const qty = quantityByAsset.get(record.assetId) ?? 1;
+      return sum + record.close * qty;
+    }, 0)
   );
 
-  const binanceTrackedUsd = latestBinance?.totalTrackedUsd ?? 0;
+  const binanceTrackedUsd = latestBinance.totalTrackedUsd;
+  const totalTrackedUsd = roundNumber(binanceTrackedUsd + stockTrackedUsd);
 
-  const totalTrackedUsd = Number(
-    (binanceTrackedUsd + stockTrackedUsd).toFixed(8)
-  );
-
-  const totalPnl = Number(
-    calendarDays.reduce((sum, day) => sum + (day.totalPnl ?? 0), 0).toFixed(8)
+  const totalPnl = roundNumber(
+    calendarDays.reduce((sum, day) => sum + (day.totalPnl ?? 0), 0)
   );
 
   const averagePnl =
     calendarDays.length > 0
-      ? Number((totalPnl / calendarDays.length).toFixed(8))
+      ? roundNumber(totalPnl / calendarDays.length)
       : null;
 
   return {
     asOf:
-      latestBinance?.fetchedAt ??
+      latestBinance.fetchedAt ??
       latestMarketRecords[latestMarketRecords.length - 1]?.updatedAt ??
       null,
-
     totals: {
       totalTrackedUsd,
       binanceTrackedUsd,
@@ -98,13 +138,11 @@ export async function getOverviewData(): Promise<OverviewResponse> {
       fundTrackedUsd: 0,
       cashTrackedUsd: 0
     },
-
     binance: {
-      spotValueUsd: latestBinance?.spotValueUsd ?? 0,
-      futuresNotionalUsd: latestBinance?.futuresNotionalUsd ?? 0,
-      futuresUnrealizedPnl: latestBinance?.futuresUnrealizedPnl ?? 0
+      spotValueUsd: latestBinance.spotValueUsd,
+      futuresNotionalUsd: latestBinance.futuresNotionalUsd,
+      futuresUnrealizedPnl: latestBinance.futuresUnrealizedPnl
     },
-
     calendar: {
       totalPnl,
       averagePnl,
