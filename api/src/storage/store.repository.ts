@@ -15,11 +15,32 @@ function normalizeStoreData(input: Partial<StoreData> | null | undefined): Store
     version: 1,
     baseCurrency: "USD",
     accounts: Array.isArray(input?.accounts) ? input.accounts : [],
-    assets: Array.isArray(input?.assets) ? input.assets : [],
+    assets: Array.isArray(input?.assets)
+      ? input.assets.map((asset: any) => ({
+          ...asset,
+          metadata:
+            asset?.metadata && typeof asset.metadata === "object"
+              ? {
+                  provider:
+                    asset.metadata.provider === "twelvedata" || asset.metadata.provider === "sec"
+                      ? asset.metadata.provider
+                      : undefined,
+                  exchange:
+                    typeof asset.metadata.exchange === "string" || asset.metadata.exchange === null
+                      ? asset.metadata.exchange
+                      : undefined,
+                  projId:
+                    typeof asset.metadata.projId === "string" || asset.metadata.projId === null
+                      ? asset.metadata.projId
+                      : undefined
+                }
+              : null
+        }))
+      : [],
     accountAssetLinks: Array.isArray(input?.accountAssetLinks)
       ? input.accountAssetLinks.map((link: any) => ({
           ...link,
-          quantity: typeof link.quantity === "number" ? link.quantity : 1 // ⭐ default
+          quantity: typeof link.quantity === "number" ? link.quantity : 1
         }))
       : []
   };

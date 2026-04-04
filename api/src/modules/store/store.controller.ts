@@ -2,6 +2,7 @@ import type { NextFunction, Request, Response } from "express";
 import { ValidationError } from "../../shared/errors";
 import {
   createAccountSchema,
+  createAssetFromProviderSchema,
   createAssetSchema,
   linkAssetToAccountSchema,
   updateBinanceAccountSettingsSchema
@@ -10,12 +11,16 @@ import {
   bootstrapStore,
   createAccount,
   createAsset,
+  createAssetFromProvider,
   getStore,
   linkAssetToAccount,
   listAccounts,
   listAccountAssetLinks,
   listAssets,
-  updateBinanceAccountSettings
+  unlinkAssetFromAccount,
+  updateAccountAssetLinkQuantity,
+  updateBinanceAccountSettings,
+  updateAccountName
 } from "./store.service";
 
 function parseSourceQuery(value: unknown): "binance" | "stock" | "fund" | undefined {
@@ -28,6 +33,18 @@ function parseSourceQuery(value: unknown): "binance" | "stock" | "fund" | undefi
   }
 
   throw new ValidationError("Invalid source filter");
+}
+
+function parseSingleParam(value: unknown, fieldName: string): string {
+  if (typeof value === "string" && value.trim()) {
+    return value.trim();
+  }
+
+  if (Array.isArray(value) && typeof value[0] === "string" && value[0].trim()) {
+    return value[0].trim();
+  }
+
+  throw new ValidationError(`Invalid ${fieldName}`);
 }
 
 export async function getStoreHandler(_req: Request, res: Response, next: NextFunction) {
@@ -134,17 +151,36 @@ export async function createAssetHandler(req: Request, res: Response, next: Next
   }
 }
 
+export async function createAssetFromProviderHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const parsed = createAssetFromProviderSchema.safeParse(req.body);
+
+    if (!parsed.success) {
+      throw new ValidationError(parsed.error.issues.map((issue) => issue.message).join(", "));
+    }
+
+    const asset = await createAssetFromProvider(parsed.data);
+
+    res.status(201).json({
+      ok: true,
+      data: asset
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function updateBinanceAccountSettingsHandler(
   req: Request,
   res: Response,
   next: NextFunction
 ) {
   try {
-    const rawAccountId = req.params.accountId;
-
-    if (typeof rawAccountId !== "string" || !rawAccountId) {
-      throw new ValidationError("Invalid accountId");
-    }
+    const accountId = parseSingleParam(req.params.accountId, "accountId");
 
     const parsed = updateBinanceAccountSettingsSchema.safeParse(req.body);
 
@@ -154,7 +190,7 @@ export async function updateBinanceAccountSettingsHandler(
       );
     }
 
-    const account = await updateBinanceAccountSettings(rawAccountId, parsed.data);
+    const account = await updateBinanceAccountSettings(accountId, parsed.data);
 
     res.json({
       ok: true,
@@ -178,6 +214,52 @@ export async function linkAssetToAccountHandler(req: Request, res: Response, nex
     res.status(201).json({
       ok: true,
       data: link
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateLinkQuantityHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const linkId = parseSingleParam(req.params.linkId, "linkId");
+    const quantity = Number(req.body?.quantity);
+
+    const result = await updateAccountAssetLinkQuantity(linkId, quantity);
+
+    res.json({
+      ok: true,
+      data: result
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function unlinkAssetHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const linkId = parseSingleParam(req.params.linkId, "linkId");
+
+    await unlinkAssetFromAccount(linkId);
+
+    res.json({
+      ok: true
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function updateAccountNameHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const accountId = parseSingleParam(req.params.accountId, "accountId");
+    const name = String(req.body?.name ?? "");
+
+    const account = await updateAccountName(accountId, name);
+
+    res.json({
+      ok: true,
+      data: account
     });
   } catch (error) {
     next(error);

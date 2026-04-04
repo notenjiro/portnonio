@@ -1,5 +1,455 @@
 [
   {
+    "date": "2025-04-04",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305978,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:54:43.158Z",
+    "updatedAt": "2026-04-03T15:54:43.158Z"
+  },
+  {
+    "date": "2025-04-08",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305978,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:54:43.563Z",
+    "updatedAt": "2026-04-03T15:54:43.563Z"
+  },
+  {
+    "date": "2025-04-09",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305978,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:54:43.966Z",
+    "updatedAt": "2026-04-03T15:54:43.966Z"
+  },
+  {
+    "date": "2025-04-10",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305978,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:54:44.353Z",
+    "updatedAt": "2026-04-03T15:54:44.353Z"
+  },
+  {
+    "date": "2025-04-11",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059766,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:56:25.451Z",
+    "updatedAt": "2026-04-03T15:56:25.451Z"
+  },
+  {
+    "date": "2025-04-16",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059766,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:56:25.835Z",
+    "updatedAt": "2026-04-03T15:56:25.835Z"
+  },
+  {
+    "date": "2025-04-17",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059766,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:56:26.225Z",
+    "updatedAt": "2026-04-03T15:56:26.225Z"
+  },
+  {
+    "date": "2025-04-18",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059766,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:56:26.614Z",
+    "updatedAt": "2026-04-03T15:56:26.614Z"
+  },
+  {
+    "date": "2025-04-21",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059766,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:56:26.994Z",
+    "updatedAt": "2026-04-03T15:56:26.994Z"
+  },
+  {
+    "date": "2025-04-22",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059766,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:56:27.375Z",
+    "updatedAt": "2026-04-03T15:56:27.375Z"
+  },
+  {
+    "date": "2025-04-23",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:59:11.622Z",
+    "updatedAt": "2026-04-03T15:59:11.622Z"
+  },
+  {
+    "date": "2025-04-24",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:59:12.021Z",
+    "updatedAt": "2026-04-03T15:59:12.021Z"
+  },
+  {
+    "date": "2025-04-25",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:59:12.414Z",
+    "updatedAt": "2026-04-03T15:59:12.414Z"
+  },
+  {
+    "date": "2025-04-28",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:59:12.828Z",
+    "updatedAt": "2026-04-03T15:59:12.828Z"
+  },
+  {
+    "date": "2025-04-29",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:59:13.224Z",
+    "updatedAt": "2026-04-03T15:59:13.224Z"
+  },
+  {
+    "date": "2025-04-30",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:59:13.724Z",
+    "updatedAt": "2026-04-03T15:59:13.724Z"
+  },
+  {
+    "date": "2025-05-02",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:05.941Z",
+    "updatedAt": "2026-04-03T16:05:05.941Z"
+  },
+  {
+    "date": "2025-05-06",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:06.446Z",
+    "updatedAt": "2026-04-03T16:05:06.446Z"
+  },
+  {
+    "date": "2025-05-07",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:06.880Z",
+    "updatedAt": "2026-04-03T16:05:06.880Z"
+  },
+  {
+    "date": "2025-05-08",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:07.415Z",
+    "updatedAt": "2026-04-03T16:05:07.415Z"
+  },
+  {
+    "date": "2025-05-09",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:07.804Z",
+    "updatedAt": "2026-04-03T16:05:07.804Z"
+  },
+  {
+    "date": "2025-05-13",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:08.182Z",
+    "updatedAt": "2026-04-03T16:05:08.182Z"
+  },
+  {
+    "date": "2025-05-14",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:08.553Z",
+    "updatedAt": "2026-04-03T16:05:08.553Z"
+  },
+  {
+    "date": "2025-05-15",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305987,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T16:05:09.037Z",
+    "updatedAt": "2026-04-03T16:05:09.037Z"
+  },
+  {
+    "date": "2025-05-16",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:07:42.953Z",
+    "updatedAt": "2026-04-04T00:07:42.953Z"
+  },
+  {
+    "date": "2025-05-20",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:07:43.400Z",
+    "updatedAt": "2026-04-04T00:07:43.400Z"
+  },
+  {
+    "date": "2025-05-21",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:07:43.973Z",
+    "updatedAt": "2026-04-04T00:07:43.973Z"
+  },
+  {
+    "date": "2025-05-22",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:07:44.485Z",
+    "updatedAt": "2026-04-04T00:07:44.485Z"
+  },
+  {
+    "date": "2025-05-23",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:07:44.997Z",
+    "updatedAt": "2026-04-04T00:07:44.997Z"
+  },
+  {
+    "date": "2025-05-26",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:07:45.406Z",
+    "updatedAt": "2026-04-04T00:07:45.406Z"
+  },
+  {
+    "date": "2025-05-27",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:02.875Z",
+    "updatedAt": "2026-04-04T00:09:02.875Z"
+  },
+  {
+    "date": "2025-06-30",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:00.345Z",
+    "updatedAt": "2026-04-04T00:09:00.345Z"
+  },
+  {
+    "date": "2025-07-01",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:00.731Z",
+    "updatedAt": "2026-04-04T00:09:00.731Z"
+  },
+  {
+    "date": "2025-07-02",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:01.126Z",
+    "updatedAt": "2026-04-04T00:09:01.126Z"
+  },
+  {
+    "date": "2025-07-03",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:01.565Z",
+    "updatedAt": "2026-04-04T00:09:01.565Z"
+  },
+  {
+    "date": "2025-07-04",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:01.979Z",
+    "updatedAt": "2026-04-04T00:09:01.979Z"
+  },
+  {
+    "date": "2025-07-07",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305917,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:09:02.445Z",
+    "updatedAt": "2026-04-04T00:09:02.445Z"
+  },
+  {
+    "date": "2025-07-31",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:00.256Z",
+    "updatedAt": "2026-04-04T00:08:00.256Z"
+  },
+  {
+    "date": "2025-08-01",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:00.703Z",
+    "updatedAt": "2026-04-04T00:08:00.703Z"
+  },
+  {
+    "date": "2025-08-04",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:01.277Z",
+    "updatedAt": "2026-04-04T00:08:01.277Z"
+  },
+  {
+    "date": "2025-08-05",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:01.791Z",
+    "updatedAt": "2026-04-04T00:08:01.791Z"
+  },
+  {
+    "date": "2025-08-06",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:02.301Z",
+    "updatedAt": "2026-04-04T00:08:02.301Z"
+  },
+  {
+    "date": "2025-08-07",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:02.816Z",
+    "updatedAt": "2026-04-04T00:08:02.816Z"
+  },
+  {
+    "date": "2025-08-08",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:03.223Z",
+    "updatedAt": "2026-04-04T00:08:03.223Z"
+  },
+  {
+    "date": "2025-08-13",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059131,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:08:03.613Z",
+    "updatedAt": "2026-04-04T00:08:03.613Z"
+  },
+  {
+    "date": "2026-02-24",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059048,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:10:00.113Z",
+    "updatedAt": "2026-04-04T00:10:00.113Z"
+  },
+  {
+    "date": "2026-02-25",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059048,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:10:00.497Z",
+    "updatedAt": "2026-04-04T00:10:00.497Z"
+  },
+  {
+    "date": "2026-02-26",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059048,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:10:00.899Z",
+    "updatedAt": "2026-04-04T00:10:00.899Z"
+  },
+  {
+    "date": "2026-02-27",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059048,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:10:01.834Z",
+    "updatedAt": "2026-04-04T00:10:01.834Z"
+  },
+  {
+    "date": "2026-03-09",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059734,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:58:51.537Z",
+    "updatedAt": "2026-04-03T15:58:51.537Z"
+  },
+  {
     "date": "2026-03-17",
     "base": "THB",
     "quote": "USD",
@@ -9,6 +459,24 @@
     "updatedAt": "2026-04-02T02:44:35.783Z"
   },
   {
+    "date": "2026-03-26",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.03059862,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:58:07.377Z",
+    "updatedAt": "2026-04-03T15:58:07.377Z"
+  },
+  {
+    "date": "2026-03-30",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305978,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:54:35.565Z",
+    "updatedAt": "2026-04-03T15:54:35.565Z"
+  },
+  {
     "date": "2026-03-31",
     "base": "THB",
     "quote": "USD",
@@ -16,6 +484,15 @@
     "source": "twelvedata",
     "createdAt": "2026-04-02T02:44:36.147Z",
     "updatedAt": "2026-04-02T02:44:36.147Z"
+  },
+  {
+    "date": "2026-04-01",
+    "base": "THB",
+    "quote": "USD",
+    "rate": 0.0305978,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T15:54:35.188Z",
+    "updatedAt": "2026-04-03T15:54:35.188Z"
   },
   {
     "date": "2026-04-02",

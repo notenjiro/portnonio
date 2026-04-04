@@ -1,11 +1,16 @@
 import { Router } from "express";
 import { getCalendarHandler } from "../modules/calendar/calendar.controller";
 import { getDashboardHandler } from "../modules/dashboard/dashboard.controller";
-import { refreshFundNavHandler } from "../modules/fund/fund.controller";
+import {
+  backfillFundNavHistoryHandler,
+  refreshFundNavHandler
+} from "../modules/fund/fund.controller";
 import { getHealthStatus } from "../modules/health/health.service";
 import { refreshMarketAssetHandler } from "../modules/market/market.controller";
 import { getOverviewHandler } from "../modules/overview/overview.controller";
+import { getPortfolioAssetsHandler } from "../modules/portfolio/portfolio.controller";
 import { getPositionsHandler } from "../modules/positions/positions.controller";
+import { getRealizedPnlHandler } from "../modules/pnl/pnl.controller";
 import {
   getBinanceHistoryHandler,
   getFundHistoryHandler,
@@ -17,14 +22,19 @@ import {
 import {
   bootstrapStoreHandler,
   createAccountHandler,
+  createAssetFromProviderHandler,
   createAssetHandler,
   getStoreHandler,
   linkAssetToAccountHandler,
   listAccountsHandler,
   listAccountAssetLinksHandler,
   listAssetsHandler,
-  updateBinanceAccountSettingsHandler
+  unlinkAssetHandler,
+  updateBinanceAccountSettingsHandler,
+  updateLinkQuantityHandler,
+  updateAccountNameHandler
 } from "../modules/store/store.controller";
+import { onboardAssetFromProviderHandler } from "../modules/store/store.onboard-controller";
 import {
   getBinanceFuturesPositionsHandler,
   getBinancePortfolioHandler,
@@ -32,20 +42,21 @@ import {
   getBinancePublicHealthHandler,
   getBinanceReadinessHandler,
   getBinanceSpotHoldingsHandler,
-  getSecHealthHandler,
   getSecAmcListHandler,
   getSecFundSpecificationsHandler,
-  resolveSecFundProjIdHandler,
+  getSecHealthHandler,
   getTwelveDataHealthHandler,
   listProvidersHandler,
-  providerHealthHandler
+  providerHealthHandler,
+  resolveSecFundProjIdHandler,
+  searchSecFundsHandler,
+  searchTwelveDataHandler
 } from "../modules/store/store.provider-controller";
 import {
+  backfillBinanceRealizedHandler,
   persistBinanceSnapshotHandler,
-  runBinanceSyncHandler,
-  backfillBinanceRealizedHandler
+  runBinanceSyncHandler
 } from "../modules/sync/sync.controller";
-import { getRealizedPnlHandler } from "../modules/pnl/pnl.controller";
 
 export const apiRouter = Router();
 
@@ -62,12 +73,15 @@ apiRouter.get("/dashboard", getDashboardHandler);
 apiRouter.get("/overview", getOverviewHandler);
 apiRouter.get("/calendar", getCalendarHandler);
 apiRouter.get("/positions", getPositionsHandler);
+apiRouter.get("/portfolio/assets", getPortfolioAssetsHandler);
 
 apiRouter.get("/providers", listProvidersHandler);
 apiRouter.get("/providers/health", providerHealthHandler);
 apiRouter.get("/providers/binance/public-health", getBinancePublicHealthHandler);
 apiRouter.get("/providers/twelvedata/health", getTwelveDataHealthHandler);
+apiRouter.get("/providers/twelvedata/search", searchTwelveDataHandler);
 apiRouter.get("/providers/sec/health", getSecHealthHandler);
+apiRouter.get("/providers/sec/search", searchSecFundsHandler);
 apiRouter.get("/providers/binance/accounts/:accountId/readiness", getBinanceReadinessHandler);
 apiRouter.get(
   "/providers/binance/accounts/:accountId/private-account",
@@ -88,6 +102,7 @@ apiRouter.get(
 
 apiRouter.post("/market/refresh/:assetId", refreshMarketAssetHandler);
 apiRouter.post("/fund/nav/refresh/:assetId", refreshFundNavHandler);
+apiRouter.post("/fund/nav/backfill/:assetId", backfillFundNavHistoryHandler);
 
 apiRouter.get("/history/binance", getBinanceHistoryHandler);
 apiRouter.get("/history/market", getMarketHistoryHandler);
@@ -101,6 +116,10 @@ apiRouter.post(
   "/sync/binance/accounts/:accountId/persist-snapshot",
   persistBinanceSnapshotHandler
 );
+apiRouter.post(
+  "/sync/binance/accounts/:accountId/backfill-realized",
+  backfillBinanceRealizedHandler
+);
 
 apiRouter.get("/store", getStoreHandler);
 apiRouter.post("/store/bootstrap", bootstrapStoreHandler);
@@ -111,9 +130,13 @@ apiRouter.put("/store/accounts/:accountId/binance-settings", updateBinanceAccoun
 
 apiRouter.get("/store/assets", listAssetsHandler);
 apiRouter.post("/store/assets", createAssetHandler);
+apiRouter.post("/store/assets/from-provider", createAssetFromProviderHandler);
+apiRouter.post("/store/assets/onboard-from-provider", onboardAssetFromProviderHandler);
 
 apiRouter.get("/store/account-asset-links", listAccountAssetLinksHandler);
 apiRouter.post("/store/account-asset-links", linkAssetToAccountHandler);
+apiRouter.patch("/store/account-asset-links/:linkId/quantity", updateLinkQuantityHandler);
+apiRouter.delete("/store/account-asset-links/:linkId", unlinkAssetHandler);
 
 apiRouter.get("/providers/sec/amc", getSecAmcListHandler);
 apiRouter.get("/providers/sec/specifications", getSecFundSpecificationsHandler);
@@ -121,7 +144,4 @@ apiRouter.get("/providers/sec/resolve-proj-id", resolveSecFundProjIdHandler);
 
 apiRouter.get("/pnl/realized", getRealizedPnlHandler);
 
-apiRouter.post(
-  "/sync/binance/accounts/:accountId/backfill-realized",
-  backfillBinanceRealizedHandler
-);
+apiRouter.patch("/store/accounts/:accountId/name", updateAccountNameHandler);

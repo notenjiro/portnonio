@@ -10,10 +10,8 @@ function roundNumber(value: number): number {
   return Number(value.toFixed(8));
 }
 
-// 🔥 THB -> USD
 export async function getFxRateTHBUSD(date?: string): Promise<number> {
   const targetDate = date ?? today();
-
   const history = await readFxHistory();
 
   const existing = history.find(
@@ -24,29 +22,41 @@ export async function getFxRateTHBUSD(date?: string): Promise<number> {
     return existing.rate;
   }
 
-  // fallback: fetch live
-  const quote = await getTwelveDataQuote("USD/THB");
+  try {
+    const quote = await getTwelveDataQuote("USD/THB");
+    const close = Number(quote?.close);
 
-  // USD/THB = 36.5 → THB/USD = 1 / 36.5
-  const rate = roundNumber(1 / quote.close);
+    if (!Number.isFinite(close) || close <= 0) {
+      throw new Error("Invalid Twelve Data close price for symbol USD/THB");
+    }
 
-  const nowIso = new Date().toISOString();
+    const rate = roundNumber(1 / close);
+    const nowIso = new Date().toISOString();
 
-  const record: FxDailyRateRecord = {
-    date: targetDate,
-    base: "THB",
-    quote: "USD",
-    rate,
-    source: "twelvedata",
-    createdAt: nowIso,
-    updatedAt: nowIso
-  };
+    const record: FxDailyRateRecord = {
+      date: targetDate,
+      base: "THB",
+      quote: "USD",
+      rate,
+      source: "twelvedata",
+      createdAt: nowIso,
+      updatedAt: nowIso
+    };
 
-  history.push(record);
+    history.push(record);
+    history.sort((a, b) => a.date.localeCompare(b.date));
+    await writeFxHistory(history);
 
-  history.sort((a, b) => a.date.localeCompare(b.date));
+    return rate;
+  } catch {
+    const fallback = [...history]
+      .filter((r) => r.base === "THB" && r.quote === "USD")
+      .sort((a, b) => b.date.localeCompare(a.date))[0];
 
-  await writeFxHistory(history);
+    if (fallback) {
+      return fallback.rate;
+    }
 
-  return rate;
+    return 0.027;
+  }
 }

@@ -8,13 +8,17 @@ import {
   getBinanceSyncReadiness
 } from "../../providers/binance.adapter";
 import { getProviderHealth, listSupportedProviders } from "../../providers/provider-registry";
-import { getTwelveDataProviderHealth } from "../../providers/twelvedata.adapter";
+import {
+  getTwelveDataProviderHealth,
+  searchTwelveDataSymbols
+} from "../../providers/twelvedata.adapter";
 import { ValidationError } from "../../shared/errors";
 import {
   getSecAmcList,
   getSecProviderHealth,
   getSecFundSpecifications,
-  resolveFundProjIdByClassName
+  resolveFundProjIdByClassName,
+  searchSecFunds
 } from "../../providers/sec.adapter";
 
 export async function listProvidersHandler(_req: Request, res: Response, next: NextFunction) {
@@ -88,6 +92,29 @@ export async function getTwelveDataHealthHandler(_req: Request, res: Response, n
   }
 }
 
+export async function searchTwelveDataHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const rawQuery = req.query.query;
+
+    if (typeof rawQuery !== "string" || !rawQuery.trim()) {
+      throw new ValidationError("query is required");
+    }
+
+    const data = await searchTwelveDataSymbols(rawQuery.trim());
+
+    res.json({
+      ok: true,
+      data
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
 export async function getSecHealthHandler(_req: Request, res: Response, next: NextFunction) {
   try {
     const health = await getSecProviderHealth();
@@ -95,6 +122,29 @@ export async function getSecHealthHandler(_req: Request, res: Response, next: Ne
     res.json({
       ok: true,
       data: health
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+export async function searchSecFundsHandler(
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  try {
+    const rawQuery = req.query.query;
+
+    if (typeof rawQuery !== "string" || !rawQuery.trim()) {
+      throw new ValidationError("query is required");
+    }
+
+    const data = await searchSecFunds(rawQuery.trim());
+
+    res.json({
+      ok: true,
+      data
     });
   } catch (error) {
     next(error);

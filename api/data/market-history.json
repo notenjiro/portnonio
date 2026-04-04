@@ -20,5 +20,49 @@
     "source": "twelvedata",
     "createdAt": "2026-04-01T10:39:01.279Z",
     "updatedAt": "2026-04-01T10:39:01.279Z"
+  },
+  {
+    "date": "2026-04-03",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+    "symbol": "AAPL",
+    "close": 255.92,
+    "currency": "USD",
+    "changePercent": 0.11344259,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T10:36:59.152Z",
+    "updatedAt": "2026-04-03T16:59:12.432Z"
+  },
+  {
+    "date": "2026-04-03",
+    "assetId": "c4888c36-f3d5-4d1d-bc7e-7508e5add160",
+    "symbol": "MSFT",
+    "close": 373.45999,
+    "currency": "USD",
+    "changePercent": 1.10729,
+    "source": "twelvedata",
+    "createdAt": "2026-04-03T10:36:59.578Z",
+    "updatedAt": "2026-04-03T16:59:12.941Z"
+  },
+  {
+    "date": "2026-04-04",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+    "symbol": "AAPL",
+    "close": 255.92,
+    "currency": "USD",
+    "changePercent": 0.11344259,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:00:13.030Z",
+    "updatedAt": "2026-04-04T00:07:13.303Z"
+  },
+  {
+    "date": "2026-04-04",
+    "assetId": "c4888c36-f3d5-4d1d-bc7e-7508e5add160",
+    "symbol": "MSFT",
+    "close": 373.45999,
+    "currency": "USD",
+    "changePercent": 1.10729,
+    "source": "twelvedata",
+    "createdAt": "2026-04-04T00:00:13.461Z",
+    "updatedAt": "2026-04-04T00:07:13.681Z"
   }
 ]

@@ -276,110 +276,83 @@ type HistorySnapshotApiItem = {
   updatedAt: string;
 };
 
-type DashboardResponse = {
-  success: boolean;
-  totalValue: number;
-  todayPnL: number;
-  connectedAccounts: number;
-  providerSummary?: {
-    totalValue?: number;
-    spotValue?: number;
-    futuresWallet?: number;
-    futuresUnrealizedPnL?: number;
-    stockValue?: number;
-    fundValue?: number;
-    cashBalance?: number;
-  };
-  providerBreakdown?: {
-    spotValue?: number;
-    futuresWallet?: number;
-    futuresPnL?: number;
-    stockValue?: number;
-    fundValue?: number;
-    cashBalance?: number;
-    spotHoldings?: Array<{
-      asset: string;
-      amount: number;
-      value: number;
-    }>;
-    futuresPositions?: Array<{
-      symbol: string;
-      side: string;
-      size: number;
-      entryPrice: number;
-      markPrice: number;
-      pnl: number;
-      notional: number;
-      leverage: number | null;
-    }>;
-    stockHoldings?: Array<{
-      symbol: string;
-      name: string;
-      quantity: number;
-      averageCost: number;
-      lastPrice: number;
-      marketValue: number;
-      costValue: number;
-      unrealizedPnL: number;
-      lastSyncedAt?: string;
-      lastSyncStatus?: SyncStatus;
-      lastSyncMessage?: string;
-      lastPriceDate?: string;
-      lastPriceSource?: string;
-    }>;
-    fundHoldings?: Array<{
-      symbol: string;
-      name: string;
-      units: number;
-      nav: number;
-      marketValue: number;
-      costValue: number;
-      unrealizedPnL: number;
-      lastSyncedAt?: string;
-      lastSyncStatus?: SyncStatus;
-      lastSyncMessage?: string;
-      lastPriceDate?: string;
-      lastPriceSource?: string;
-    }>;
-  };
-  stockBreakdown?: {
-    stockValue?: number;
-    fundValue?: number;
-    stockHoldings?: Array<{
-      symbol: string;
-      name: string;
-      quantity: number;
-      averageCost: number;
-      lastPrice: number;
-      marketValue: number;
-      costValue: number;
-      unrealizedPnL: number;
-      lastSyncedAt?: string;
-      lastSyncStatus?: SyncStatus;
-      lastSyncMessage?: string;
-      lastPriceDate?: string;
-      lastPriceSource?: string;
-    }>;
-    fundHoldings?: Array<{
-      symbol: string;
-      name: string;
-      units: number;
-      nav: number;
-      marketValue: number;
-      costValue: number;
-      unrealizedPnL: number;
-      lastSyncedAt?: string;
-      lastSyncStatus?: SyncStatus;
-      lastSyncMessage?: string;
-      lastPriceDate?: string;
-      lastPriceSource?: string;
-    }>;
+export type StoreAccountItem = {
+  id: string;
+  name: string;
+  source: "binance" | "stock" | "fund";
+  provider?: string;
+  settings?: {
+    label?: string;
+    isTestnet?: boolean;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type SearchAssetResultItem = {
+  symbol: string;
+  name: string;
+  exchange?: string | null;
+  projId?: string;
+};
+
+export type StoreAssetItem = {
+  id: string;
+  symbol: string;
+  name: string;
+  source: "binance" | "stock" | "fund";
+  category: "crypto" | "stock" | "fund";
+  currency: string;
+  metadata?: {
+    provider?: "twelvedata" | "sec";
+    exchange?: string | null;
+    projId?: string | null;
+  } | null;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type AccountAssetLinkItem = {
+  id: string;
+  accountId: string;
+  assetId: string;
+  quantity: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type PortfolioAssetValuationItem = {
+  linkId: string;
+  assetId: string;
+  symbol: string;
+  name: string;
+  category: "crypto" | "stock" | "fund";
+  quantity: number;
+  price: number | null;
+  value: number | null;
+  dailyPnl: number | null;
+  changePercent: number | null;
+  lastUpdated: string | null;
+};
+
+type OnboardResponse = {
+  asset: unknown;
+  link: unknown;
+  refresh: unknown;
+  rebuild: unknown;
+  warnings?: {
+    refresh?: string | null;
+    rebuild?: string | null;
   };
 };
 
 const BASE_URL = "http://localhost:3001/api";
+const DEFAULT_TIMEOUT_MS = 20_000;
 
-async function parseJsonOrThrow<T>(res: Response, fallbackMessage: string): Promise<T> {
+async function parseJsonOrThrow<T>(
+  res: Response,
+  fallbackMessage: string,
+): Promise<T> {
   const text = await res.text();
   const payload = text ? JSON.parse(text) : null;
 
@@ -398,6 +371,30 @@ async function parseJsonOrThrow<T>(res: Response, fallbackMessage: string): Prom
 
 function notImplemented(name: string): never {
   throw new Error(`${name} is not wired to the new backend yet`);
+}
+
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit = {},
+  timeoutMs = DEFAULT_TIMEOUT_MS,
+): Promise<Response> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } catch (error) {
+    if (error instanceof DOMException && error.name === "AbortError") {
+      throw new Error(`Request timed out after ${Math.round(timeoutMs / 1000)}s`);
+    }
+
+    throw error;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
 }
 
 function normalizeDashboardSummary(data: DashboardApiData) {
@@ -475,7 +472,7 @@ function normalizeDashboardBreakdown(data: DashboardApiData) {
 
 export async function fetchDashboard() {
   const res = await parseJsonOrThrow<ApiEnvelope<DashboardApiData>>(
-    await fetch(`${BASE_URL}/dashboard`),
+    await fetchWithTimeout(`${BASE_URL}/dashboard`),
     "Failed to fetch dashboard",
   );
 
@@ -484,7 +481,7 @@ export async function fetchDashboard() {
 
 export async function fetchOverview() {
   const res = await parseJsonOrThrow<ApiEnvelope<OverviewApiData>>(
-    await fetch(`${BASE_URL}/overview`),
+    await fetchWithTimeout(`${BASE_URL}/overview`),
     "Failed to fetch overview",
   );
 
@@ -493,16 +490,18 @@ export async function fetchOverview() {
 
 export async function fetchPositions() {
   const res = await parseJsonOrThrow<ApiEnvelope<PositionsApiData>>(
-    await fetch(`${BASE_URL}/positions`),
+    await fetchWithTimeout(`${BASE_URL}/positions`),
     "Failed to fetch positions",
   );
 
   return res.data;
 }
 
-export async function fetchCalendar(scope: "all" | "binance" | "stock" = "all") {
+export async function fetchCalendar(
+  scope: "all" | "binance" | "stock" = "all",
+) {
   const res = await parseJsonOrThrow<ApiEnvelope<CalendarApiData>>(
-    await fetch(`${BASE_URL}/calendar?scope=${encodeURIComponent(scope)}`),
+    await fetchWithTimeout(`${BASE_URL}/calendar?scope=${encodeURIComponent(scope)}`),
     "Failed to fetch calendar",
   );
 
@@ -516,13 +515,63 @@ export async function rebuildDerivedViews() {
       snapshots: HistorySnapshotApiItem[];
     }>
   >(
-    await fetch(`${BASE_URL}/history/rebuild-derived`, {
+    await fetchWithTimeout(`${BASE_URL}/history/rebuild-derived`, {
       method: "POST",
-    }),
+    }, 30_000),
     "Failed to rebuild derived history",
   );
 
   return res.data;
+}
+
+export async function refreshPortfolioData() {
+  const accountsRes = await parseJsonOrThrow<ApiEnvelope<StoreAccountItem[]>>(
+    await fetchWithTimeout(`${BASE_URL}/store/accounts?source=binance`),
+    "Failed to fetch Binance accounts",
+  );
+
+  const accounts = Array.isArray(accountsRes.data) ? accountsRes.data : [];
+  const results: Array<{
+    accountId: string;
+    ok: boolean;
+    error?: string;
+  }> = [];
+
+  for (const account of accounts) {
+    try {
+      await parseJsonOrThrow(
+        await fetchWithTimeout(
+          `${BASE_URL}/sync/binance/accounts/${encodeURIComponent(account.id)}`,
+          { method: "POST" },
+          30_000,
+        ),
+        `Failed to sync Binance account ${account.id}`,
+      );
+
+      results.push({
+        accountId: account.id,
+        ok: true,
+      });
+    } catch (error) {
+      results.push({
+        accountId: account.id,
+        ok: false,
+        error: error instanceof Error ? error.message : "Unknown sync error",
+      });
+    }
+  }
+
+  try {
+    await rebuildDerivedViews();
+  } catch (error) {
+    console.warn("Rebuild derived views failed after re-sync:", error);
+  }
+
+  return {
+    syncedAccounts: results.filter((item) => item.ok).length,
+    failedAccounts: results.filter((item) => !item.ok).length,
+    results,
+  };
 }
 
 export async function fetchSummary() {
@@ -562,7 +611,94 @@ export async function connectAccount(_payload: {
 }
 
 export async function fetchAccounts() {
-  return notImplemented("fetchAccounts");
+  const res = await parseJsonOrThrow<ApiEnvelope<StoreAccountItem[]>>(
+    await fetchWithTimeout(`${BASE_URL}/store/accounts`),
+    "Failed to fetch accounts",
+  );
+
+  return res.data;
+}
+
+export async function fetchAssets(source?: "binance" | "stock" | "fund") {
+  const suffix = source ? `?source=${encodeURIComponent(source)}` : "";
+  const res = await parseJsonOrThrow<ApiEnvelope<StoreAssetItem[]>>(
+    await fetchWithTimeout(`${BASE_URL}/store/assets${suffix}`),
+    "Failed to fetch assets",
+  );
+
+  return res.data;
+}
+
+export async function fetchAccountAssetLinks(accountId?: string) {
+  const suffix = accountId ? `?accountId=${encodeURIComponent(accountId)}` : "";
+  const res = await parseJsonOrThrow<ApiEnvelope<AccountAssetLinkItem[]>>(
+    await fetchWithTimeout(`${BASE_URL}/store/account-asset-links${suffix}`),
+    "Failed to fetch asset links",
+  );
+
+  return res.data;
+}
+
+export async function fetchPortfolioAssets() {
+  const res = await parseJsonOrThrow<ApiEnvelope<PortfolioAssetValuationItem[]>>(
+    await fetchWithTimeout(`${BASE_URL}/portfolio/assets`),
+    "Failed to fetch portfolio assets",
+  );
+
+  return res.data;
+}
+
+export async function updateAccountAssetLinkQuantity(
+  linkId: string,
+  quantity: number,
+) {
+  const res = await parseJsonOrThrow<ApiEnvelope<AccountAssetLinkItem>>(
+    await fetchWithTimeout(
+      `${BASE_URL}/store/account-asset-links/${encodeURIComponent(linkId)}/quantity`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ quantity }),
+      },
+      20_000,
+    ),
+    "Failed to update quantity",
+  );
+
+  return res.data;
+}
+
+export async function unlinkAccountAsset(linkId: string) {
+  await parseJsonOrThrow<ApiEnvelope<null>>(
+    await fetchWithTimeout(
+      `${BASE_URL}/store/account-asset-links/${encodeURIComponent(linkId)}`,
+      {
+        method: "DELETE",
+      },
+      20_000,
+    ),
+    "Failed to unlink asset",
+  );
+
+  return true;
+}
+
+export async function refreshAssetPrice(asset: Pick<StoreAssetItem, "id" | "source">) {
+  const path =
+    asset.source === "fund"
+      ? `/fund/nav/refresh/${encodeURIComponent(asset.id)}`
+      : `/market/refresh/${encodeURIComponent(asset.id)}`;
+
+  const res = await parseJsonOrThrow<ApiEnvelope<unknown>>(
+    await fetchWithTimeout(`${BASE_URL}${path}`, {
+      method: "POST",
+    }, 20_000),
+    "Failed to refresh asset",
+  );
+
+  return res.data;
 }
 
 export async function fetchAccountsBreakdown() {
@@ -597,7 +733,7 @@ export async function fetchDashboardBreakdown() {
 
 export async function fetchEquityCurve() {
   const res = await parseJsonOrThrow<ApiEnvelope<HistorySnapshotApiItem[]>>(
-    await fetch(`${BASE_URL}/history/snapshots`),
+    await fetchWithTimeout(`${BASE_URL}/history/snapshots`),
     "Failed to fetch equity curve",
   );
 
@@ -631,13 +767,16 @@ export async function fetchStockAssets() {
   return notImplemented("fetchStockAssets");
 }
 
-export async function fetchBinancePortfolio(_apiKey: string, _apiSecret: string) {
+export async function fetchBinancePortfolio(
+  _apiKey: string,
+  _apiSecret: string,
+) {
   return notImplemented("fetchBinancePortfolio");
 }
 
 export async function fetchPerformance() {
   const res = await parseJsonOrThrow<ApiEnvelope<HistorySnapshotApiItem[]>>(
-    await fetch(`${BASE_URL}/history/snapshots`),
+    await fetchWithTimeout(`${BASE_URL}/history/snapshots`),
     "Failed to fetch performance",
   );
 
@@ -658,7 +797,7 @@ export async function fetchPortfolioHistory(params?: {
   endDate?: string;
 }) {
   const res = await parseJsonOrThrow<ApiEnvelope<HistorySnapshotApiItem[]>>(
-    await fetch(`${BASE_URL}/history/snapshots`),
+    await fetchWithTimeout(`${BASE_URL}/history/snapshots`),
     "Failed to fetch portfolio history",
   );
 
@@ -694,4 +833,67 @@ export async function fetchPortfolioHistory(params?: {
       },
     })),
   };
+}
+
+export async function searchAssets(
+  provider: "twelvedata" | "sec",
+  query: string,
+): Promise<SearchAssetResultItem[]> {
+  const res = await parseJsonOrThrow<ApiEnvelope<SearchAssetResultItem[]>>(
+    await fetchWithTimeout(
+      `${BASE_URL}/providers/${provider}/search?query=${encodeURIComponent(query)}`,
+      {},
+      15_000,
+    ),
+    "Failed to search assets",
+  );
+
+  return res.data;
+}
+
+export async function onboardAsset(payload: {
+  provider: "twelvedata" | "sec";
+  symbol: string;
+  name: string;
+  exchange?: string | null;
+  projId?: string;
+  currency: string;
+  accountId: string;
+  quantity?: number;
+}): Promise<OnboardResponse> {
+  const res = await parseJsonOrThrow<ApiEnvelope<OnboardResponse>>(
+    await fetchWithTimeout(
+      `${BASE_URL}/store/assets/onboard-from-provider`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      },
+      30_000,
+    ),
+    "Failed to onboard asset",
+  );
+
+  return res.data;
+}
+
+export async function updateAccountName(accountId: string, name: string) {
+  const res = await parseJsonOrThrow<ApiEnvelope<StoreAccountItem>>(
+    await fetchWithTimeout(
+      `${BASE_URL}/store/accounts/${encodeURIComponent(accountId)}/name`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name }),
+      },
+      15_000,
+    ),
+    "Failed to update account name",
+  );
+
+  return res.data;
 }

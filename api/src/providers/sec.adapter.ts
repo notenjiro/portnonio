@@ -75,6 +75,10 @@ function buildSecUrl(path: string, query?: Record<string, string | number | unde
   return url.toString();
 }
 
+function normalizeText(value: string): string {
+  return value.trim().toLowerCase();
+}
+
 export async function getSecProviderHealth(): Promise<SecProviderHealth> {
   return {
     ok: Boolean(env.SEC_API_BASE_URL),
@@ -210,4 +214,81 @@ export async function getSecFundNav(
     projId: latest.proj_id,
     lastUpdatedAt: latest.last_upd_date ?? null
   };
+}
+
+export async function searchSecFunds(query: string): Promise<
+  Array<{
+    symbol: string;
+    name: string;
+    projId: string;
+  }>
+> {
+  const trimmedQuery = query.trim();
+
+  if (!trimmedQuery) {
+    throw new ValidationError("query is required");
+  }
+
+  // กัน query ที่แทบไม่มีโอกาสเป็น fund code/ชื่อกองทุน
+  if (trimmedQuery.length < 2) {
+    return [];
+  }
+
+  let items: SecFundSpecificationRecord[] = [];
+
+  try {
+    items = await getSecFundSpecifications(trimmedQuery);
+  } catch {
+    // SEC endpoint ชอบตอบ 500 กับ query บางแบบ เช่นหุ้นหรือคำที่ไม่เข้ารูป
+    // ฝั่ง search UX ควรได้ [] ไม่ใช่ระเบิดทั้ง modal
+    return [];
+  }
+
+  const normalizedQuery = normalizeText(trimmedQuery);
+
+  const unique = new Map<
+    string,
+    {
+      symbol: string;
+      name: string;
+      projId: string;
+    }
+  >();
+
+  for (const item of items) {
+    if (!item.fund_class_name || !item.proj_id) {
+      continue;
+    }
+
+    const symbol = item.fund_class_name.trim();
+    const projId = item.proj_id.trim();
+
+    if (!symbol || !projId) {
+      continue;
+    }
+
+    const haystack = [
+      item.fund_class_name,
+      item.spec_code,
+      item.spec_desc
+    ]
+      .filter(Boolean)
+      .map((value) => normalizeText(String(value)));
+
+    const matched = haystack.some((value) => value.includes(normalizedQuery));
+
+    if (!matched) {
+      continue;
+    }
+
+    if (!unique.has(symbol)) {
+      unique.set(symbol, {
+        symbol,
+        name: symbol,
+        projId
+      });
+    }
+  }
+
+  return Array.from(unique.values()).slice(0, 20);
 }

@@ -12,6 +12,17 @@ interface TwelveDataQuoteResponse {
   is_market_open?: boolean;
 }
 
+interface TwelveDataSymbolSearchItem {
+  symbol?: string;
+  instrument_name?: string;
+  exchange?: string;
+}
+
+interface TwelveDataSymbolSearchResponse {
+  data?: TwelveDataSymbolSearchItem[];
+  status?: string;
+}
+
 export async function getTwelveDataProviderHealth(): Promise<TwelveDataProviderHealth> {
   return {
     ok: Boolean(env.TWELVEDATA_API_BASE_URL),
@@ -55,4 +66,38 @@ export async function getTwelveDataQuote(symbol: string): Promise<{
         ? parsedChangePercent
         : null
   };
+}
+
+export async function searchTwelveDataSymbols(query: string): Promise<
+  Array<{
+    symbol: string;
+    name: string;
+    exchange: string | null;
+  }>
+> {
+  const trimmedQuery = query.trim();
+
+  if (!trimmedQuery) {
+    throw new ValidationError("query is required");
+  }
+
+  if (!env.TWELVEDATA_API_KEY) {
+    throw new ValidationError("TWELVEDATA_API_KEY is not configured");
+  }
+
+  const url =
+    `${env.TWELVEDATA_API_BASE_URL}/symbol_search` +
+    `?symbol=${encodeURIComponent(trimmedQuery)}` +
+    `&apikey=${encodeURIComponent(env.TWELVEDATA_API_KEY)}`;
+
+  const response = await getJson<TwelveDataSymbolSearchResponse>(url);
+  const items = Array.isArray(response.data) ? response.data : [];
+
+  return items
+    .filter((item) => typeof item.symbol === "string" && item.symbol.trim() !== "")
+    .map((item) => ({
+      symbol: item.symbol!.trim(),
+      name: item.instrument_name?.trim() || item.symbol!.trim(),
+      exchange: item.exchange?.trim() || null
+    }));
 }

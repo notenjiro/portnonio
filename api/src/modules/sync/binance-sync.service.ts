@@ -1,8 +1,18 @@
-import { getBinancePortfolio, getBinanceSyncReadiness } from "../../providers/binance.adapter";
-import { readBinanceHistory, writeBinanceHistory } from "../../storage/history.repository";
+import {
+  getBinancePortfolio,
+  getBinanceSyncReadiness,
+} from "../../providers/binance.adapter";
+import {
+  readBinanceHistory,
+  writeBinanceHistory,
+} from "../../storage/history.repository";
 import type { BinanceDailyHistoryRecord } from "../../storage/history.types";
-import type { BinancePersistSnapshotSummary, BinanceSyncSummary } from "./sync.types";
+import type {
+  BinancePersistSnapshotSummary,
+  BinanceSyncSummary,
+} from "./sync.types";
 import { getRealizedPnlData } from "../pnl/pnl.service";
+import { rebuildDerivedPortfolioViewsFromHistory } from "../store/store.history-service";
 
 function getUtcDateString(date: Date): string {
   return date.toISOString().slice(0, 10);
@@ -11,20 +21,27 @@ function getUtcDateString(date: Date): string {
 export async function runBinanceSync(accountId: string): Promise<BinanceSyncSummary> {
   const startedAt = new Date().toISOString();
   const readiness = await getBinanceSyncReadiness(accountId);
-  const finishedAt = new Date().toISOString();
 
   if (!readiness.ready) {
+    const finishedAt = new Date().toISOString();
+
     return {
       accountId,
       provider: "binance",
       startedAt,
       finishedAt,
       ready: false,
-      simulated: true,
+      simulated: false,
       message: readiness.reasons.join(", ") || "Binance account is not ready",
-      recordsPlanned: 0
+      recordsPlanned: 0,
     };
   }
+
+  const backfillResult = await backfillBinanceRealizedPnl(accountId, 365);
+  const snapshotResult = await persistBinanceDailySnapshot(accountId);
+  await rebuildDerivedPortfolioViewsFromHistory();
+
+  const finishedAt = new Date().toISOString();
 
   return {
     accountId,
@@ -32,14 +49,14 @@ export async function runBinanceSync(accountId: string): Promise<BinanceSyncSumm
     startedAt,
     finishedAt,
     ready: true,
-    simulated: true,
-    message: "Binance sync simulation is ready for implementation",
-    recordsPlanned: 365
+    simulated: false,
+    message: `Binance sync completed | realized days updated: ${backfillResult.updatedRecords} | latest snapshot date: ${snapshotResult.date}`,
+    recordsPlanned: backfillResult.updatedRecords,
   };
 }
 
 export async function persistBinanceDailySnapshot(
-  accountId: string
+  accountId: string,
 ): Promise<BinancePersistSnapshotSummary> {
   const startedAt = new Date();
   const portfolio = await getBinancePortfolio(accountId);
@@ -48,10 +65,8 @@ export async function persistBinanceDailySnapshot(
   const date = getUtcDateString(startedAt);
   const nowIso = new Date().toISOString();
 
-  // ตอนนี้ pnl.service ยัง aggregate ตาม days อย่างเดียว
-  // ซึ่งใช้ได้กับสถานะปัจจุบันที่มี Binance account เดียว
-  const pnlData = await getRealizedPnlData(1);
-  const todayPnl = pnlData.days.find((day) => day.date === date) ?? pnlData.days.at(-1);
+  const pnlData = await getRealizedPnlData(2);
+  const todayPnl = pnlData.days.find((day) => day.date === date);
 
   const nextRecord: BinanceDailyHistoryRecord = {
     date,
@@ -60,21 +75,21 @@ export async function persistBinanceDailySnapshot(
     futuresNotionalUsd: portfolio.futures.totalNotionalUsd,
     futuresUnrealizedPnl: portfolio.futures.totalUnrealizedPnl,
     totalTrackedUsd: Number(
-      (portfolio.spot.totalValueUsd + portfolio.futures.totalNotionalUsd).toFixed(8)
+      (portfolio.spot.totalValueUsd + portfolio.futures.totalNotionalUsd).toFixed(8),
     ),
 
-    realizedPnl: todayPnl?.netRealizedPnl ?? 0,
+    realizedPnl: todayPnl?.realizedPnl ?? 0,
     funding: todayPnl?.fundingFee ?? 0,
     fees: todayPnl?.commission ?? 0,
     netRealizedPnl: todayPnl?.netRealizedPnl ?? 0,
 
     fetchedAt: portfolio.fetchedAt,
     createdAt: nowIso,
-    updatedAt: nowIso
+    updatedAt: nowIso,
   };
 
   const existingIndex = history.findIndex(
-    (item) => item.accountId === accountId && item.date === date
+    (item) => item.accountId === accountId && item.date === date,
   );
 
   let finalRecord: BinanceDailyHistoryRecord;
@@ -85,7 +100,7 @@ export async function persistBinanceDailySnapshot(
     finalRecord = {
       ...nextRecord,
       createdAt: existingRecord?.createdAt ?? nowIso,
-      updatedAt: nowIso
+      updatedAt: nowIso,
     };
 
     history[existingIndex] = finalRecord;
@@ -98,6 +113,7 @@ export async function persistBinanceDailySnapshot(
     if (a.date === b.date) {
       return a.accountId.localeCompare(b.accountId);
     }
+
     return a.date.localeCompare(b.date);
   });
 
@@ -110,13 +126,13 @@ export async function persistBinanceDailySnapshot(
     date,
     startedAt: startedAt.toISOString(),
     finishedAt: new Date().toISOString(),
-    record: finalRecord
+    record: finalRecord,
   };
 }
 
 export async function backfillBinanceRealizedPnl(
   accountId: string,
-  days: number = 30
+  days: number = 30,
 ): Promise<{
   accountId: string;
   provider: "binance";
@@ -130,16 +146,14 @@ export async function backfillBinanceRealizedPnl(
   const history = await readBinanceHistory();
   const nowIso = new Date().toISOString();
 
-  // ตอนนี้ pnl.service ยัง aggregate ตาม days อย่างเดียว
-  // ใช้ได้กับสถานะปัจจุบันที่มี Binance account เดียว
   const pnlData = await getRealizedPnlData(days);
 
   for (const day of pnlData.days) {
     const existingIndex = history.findIndex(
-      (item) => item.accountId === accountId && item.date === day.date
+      (item) => item.accountId === accountId && item.date === day.date,
     );
 
-    const realizedPnl = day.netRealizedPnl ?? 0;
+    const realizedPnl = day.realizedPnl ?? 0;
     const funding = day.fundingFee ?? 0;
     const fees = day.commission ?? 0;
     const netRealizedPnl = day.netRealizedPnl ?? 0;
@@ -157,7 +171,7 @@ export async function backfillBinanceRealizedPnl(
         funding,
         fees,
         netRealizedPnl,
-        updatedAt: nowIso
+        updatedAt: nowIso,
       };
     } else {
       history.push({
@@ -173,7 +187,7 @@ export async function backfillBinanceRealizedPnl(
         netRealizedPnl,
         fetchedAt: nowIso,
         createdAt: nowIso,
-        updatedAt: nowIso
+        updatedAt: nowIso,
       });
     }
   }
@@ -182,6 +196,7 @@ export async function backfillBinanceRealizedPnl(
     if (a.date === b.date) {
       return a.accountId.localeCompare(b.accountId);
     }
+
     return a.date.localeCompare(b.date);
   });
 
@@ -194,6 +209,6 @@ export async function backfillBinanceRealizedPnl(
     days,
     startedAt,
     finishedAt: new Date().toISOString(),
-    updatedRecords: pnlData.days.length
+    updatedRecords: pnlData.days.length,
   };
 }

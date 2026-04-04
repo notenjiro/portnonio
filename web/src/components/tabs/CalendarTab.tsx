@@ -1,11 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 
 import SkeletonCard from "@/components/common/SkeletonCard";
-import {
-  fetchDailyPnL,
-  fetchPortfolioHistory,
-  type PortfolioHistorySnapshot,
-} from "@/lib/api";
+import { fetchCalendar } from "@/lib/api";
 import { formatMoney, formatSignedMoney } from "@/lib/format";
 
 type Props = {
@@ -13,33 +9,13 @@ type Props = {
   filter: "all" | "binance" | "innovestx";
 };
 
-type BinanceDailyPoint = {
-  date: string;
-  net: number;
-  fundingFee: number;
-  commission: number;
-  realizedPnl: number;
-  currentUnrealizedPnL?: number;
-  changeUnrealized?: number;
-  totalValue?: number;
-};
-
-type CalendarEntry = {
-  date: string;
-  totalPnl: number;
-  realizedPnl: number;
-  changeUnrealized: number;
-  totalValue: number;
-  binancePnl: number;
-  stockPnl: number;
-  fundingFee: number;
-  commission: number;
-};
+type CalendarApiData = Awaited<ReturnType<typeof fetchCalendar>>;
+type CalendarDay = CalendarApiData["days"][number];
 
 type CalendarCell = {
   date: string;
   inCurrentMonth: boolean;
-  entry: CalendarEntry | null;
+  entry: CalendarDay | null;
 };
 
 const weekdayLabels = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
@@ -76,43 +52,30 @@ function getMonthLabelFromKey(monthKey: string) {
   });
 }
 
-function getMonthWindow(monthKey: string) {
-  const firstDay = parseMonthKey(monthKey);
-  const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0);
-
-  return {
-    startDate: formatDateKey(firstDay),
-    endDate: formatDateKey(lastDay),
-  };
-}
-
 function getValueTone(value: number) {
   if (value > 0) {
     return {
-      wrapper:
-        "border-emerald-200/80 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20",
-      text: "text-emerald-600 dark:text-emerald-400",
-      accent: "bg-emerald-500/90 dark:bg-emerald-500/80",
-      subtext: "text-emerald-700/70 dark:text-emerald-300/70",
+      wrapper: "border-emerald-200/90 bg-emerald-50/75",
+      text: "text-emerald-600",
+      accent: "bg-emerald-500",
+      subtext: "text-emerald-700/70",
     };
   }
 
   if (value < 0) {
     return {
-      wrapper:
-        "border-rose-200/80 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-950/20",
-      text: "text-rose-600 dark:text-rose-400",
-      accent: "bg-rose-500/90 dark:bg-rose-500/80",
-      subtext: "text-rose-700/70 dark:text-rose-300/70",
+      wrapper: "border-rose-200/90 bg-rose-50/75",
+      text: "text-rose-600",
+      accent: "bg-rose-500",
+      subtext: "text-rose-700/70",
     };
   }
 
   return {
-    wrapper:
-      "border-border bg-background/70 dark:border-white/10 dark:bg-white/[0.03]",
-    text: "text-foreground",
-    accent: "bg-muted-foreground/20 dark:bg-white/10",
-    subtext: "text-muted-foreground",
+    wrapper: "border-slate-200/80 bg-white/70",
+    text: "text-slate-900",
+    accent: "bg-slate-300",
+    subtext: "text-slate-500",
   };
 }
 
@@ -121,24 +84,24 @@ function getStreakTone(
 ) {
   if (streak.type === "positive") {
     return {
-      card: "border-emerald-200/80 bg-emerald-50/60 dark:border-emerald-900/40 dark:bg-emerald-950/20",
-      text: "text-emerald-600 dark:text-emerald-400",
-      subtext: "text-emerald-700/70 dark:text-emerald-300/70",
+      card: "border-emerald-200/90 bg-emerald-50/75",
+      text: "text-emerald-600",
+      subtext: "text-emerald-700/70",
     };
   }
 
   if (streak.type === "negative") {
     return {
-      card: "border-rose-200/80 bg-rose-50/60 dark:border-rose-900/40 dark:bg-rose-950/20",
-      text: "text-rose-600 dark:text-rose-400",
-      subtext: "text-rose-700/70 dark:text-rose-300/70",
+      card: "border-rose-200/90 bg-rose-50/75",
+      text: "text-rose-600",
+      subtext: "text-rose-700/70",
     };
   }
 
   return {
-    card: "border-border bg-background/70 dark:border-white/10 dark:bg-white/[0.03]",
-    text: "text-foreground",
-    subtext: "text-muted-foreground",
+    card: "border-slate-200/80 bg-white/70",
+    text: "text-slate-900",
+    subtext: "text-slate-500",
   };
 }
 
@@ -163,71 +126,9 @@ function formatDayLabel(dateString: string) {
   });
 }
 
-function mapBinancePoint(item: BinanceDailyPoint): CalendarEntry {
-  return {
-    date: item.date,
-    totalPnl: Number(item.net ?? 0),
-    realizedPnl: Number(item.realizedPnl ?? 0),
-    changeUnrealized: Number(item.changeUnrealized ?? item.currentUnrealizedPnL ?? 0),
-    totalValue: Number(item.totalValue ?? 0),
-    binancePnl: Number(item.net ?? 0),
-    stockPnl: 0,
-    fundingFee: Number(item.fundingFee ?? 0),
-    commission: Number(item.commission ?? 0),
-  };
-}
-
-function mapPortfolioPoint(item: PortfolioHistorySnapshot): CalendarEntry {
-  return {
-    date: item.date,
-    totalPnl: Number(item.totalPnl ?? 0),
-    realizedPnl: Number(item.realizedPnl ?? 0),
-    changeUnrealized: Number(item.changeUnrealized ?? 0),
-    totalValue: Number(item.totalValue ?? 0),
-    binancePnl: 0,
-    stockPnl: Number(item.totalPnl ?? 0),
-    fundingFee: 0,
-    commission: 0,
-  };
-}
-
-function mergeEntries(
-  binanceItems: CalendarEntry[],
-  portfolioItems: CalendarEntry[],
-): CalendarEntry[] {
-  const map = new Map<string, CalendarEntry>();
-
-  for (const item of binanceItems) {
-    map.set(item.date, { ...item });
-  }
-
-  for (const item of portfolioItems) {
-    const existing = map.get(item.date);
-
-    if (!existing) {
-      map.set(item.date, { ...item });
-      continue;
-    }
-
-    map.set(item.date, {
-      date: item.date,
-      totalPnl: existing.totalPnl + item.totalPnl,
-      realizedPnl: existing.realizedPnl + item.realizedPnl,
-      changeUnrealized: existing.changeUnrealized + item.changeUnrealized,
-      totalValue: item.totalValue || existing.totalValue,
-      binancePnl: existing.binancePnl + item.binancePnl,
-      stockPnl: existing.stockPnl + item.stockPnl,
-      fundingFee: existing.fundingFee + item.fundingFee,
-      commission: existing.commission + item.commission,
-    });
-  }
-
-  return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
-}
-
 function buildCalendarGrid(
   monthKey: string,
-  items: CalendarEntry[],
+  items: CalendarDay[],
 ): CalendarCell[][] {
   const firstDay = parseMonthKey(monthKey);
   const year = firstDay.getFullYear();
@@ -273,16 +174,14 @@ function buildCalendarGrid(
     });
   }
 
-  if (cells.length < 35) {
-    while (cells.length < 35) {
-      const extraIndex = cells.length - (firstWeekday + daysInMonth) + 1;
-      const date = new Date(year, month + 1, extraIndex);
-      cells.push({
-        date: formatDateKey(date),
-        inCurrentMonth: false,
-        entry: null,
-      });
-    }
+  while (cells.length < 35) {
+    const extraIndex = cells.length - (firstWeekday + daysInMonth) + 1;
+    const date = new Date(year, month + 1, extraIndex);
+    cells.push({
+      date: formatDateKey(date),
+      inCurrentMonth: false,
+      entry: null,
+    });
   }
 
   const weeks: CalendarCell[][] = [];
@@ -293,35 +192,12 @@ function buildCalendarGrid(
   return weeks;
 }
 
-function getBestDay(items: CalendarEntry[]) {
-  if (items.length === 0) return null;
-
-  return items.reduce((best, item) => {
-    if (!best || item.totalPnl > best.totalPnl) return item;
-    return best;
-  }, null as CalendarEntry | null);
-}
-
-function getWorstDay(items: CalendarEntry[]) {
-  if (items.length === 0) return null;
-
-  return items.reduce((worst, item) => {
-    if (!worst || item.totalPnl < worst.totalPnl) return item;
-    return worst;
-  }, null as CalendarEntry | null);
-}
-
-function getAverageDailyPnl(items: CalendarEntry[]) {
-  if (items.length === 0) return 0;
-  return items.reduce((sum, item) => sum + item.totalPnl, 0) / items.length;
-}
-
-function getCurrentPnlStreak(items: CalendarEntry[]) {
+function getCurrentPnlStreak(values: number[]) {
   let positive = 0;
   let negative = 0;
 
-  for (let i = items.length - 1; i >= 0; i -= 1) {
-    const pnl = items[i].totalPnl;
+  for (let i = values.length - 1; i >= 0; i -= 1) {
+    const pnl = Number(values[i] ?? 0);
 
     if (pnl > 0) {
       if (negative > 0) break;
@@ -357,8 +233,26 @@ function getCurrentPnlStreak(items: CalendarEntry[]) {
   };
 }
 
+function mapFilterToScope(filter: Props["filter"]): "all" | "binance" | "stock" {
+  if (filter === "binance") return "binance";
+  if (filter === "innovestx") return "stock";
+  return "all";
+}
+
+function getDisplayDayPnl(day: CalendarDay, filter: Props["filter"]): number {
+  if (filter === "binance") {
+    return Number(day.binancePnl ?? 0);
+  }
+
+  if (filter === "innovestx") {
+    return Number(day.stockPnl ?? 0) + Number(day.fundPnl ?? 0);
+  }
+
+  return Number(day.totalPnl ?? 0);
+}
+
 export default function CalendarTab({ refreshKey, filter }: Props) {
-  const [items, setItems] = useState<CalendarEntry[]>([]);
+  const [calendarData, setCalendarData] = useState<CalendarApiData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [monthKey, setMonthKey] = useState(() => formatMonthKey(new Date()));
@@ -371,39 +265,11 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
         setLoading(true);
         setError("");
 
-        const { startDate, endDate } = getMonthWindow(monthKey);
-
-        let nextItems: CalendarEntry[] = [];
-
-        if (filter === "binance") {
-          const res = await fetchDailyPnL(monthKey);
-          const raw = Array.isArray(res?.points) ? res.points : [];
-          nextItems = raw.map(mapBinancePoint);
-        } else if (filter === "innovestx") {
-          const res = await fetchPortfolioHistory({ startDate, endDate });
-          const raw = Array.isArray(res?.data) ? res.data : [];
-          nextItems = raw.map(mapPortfolioPoint);
-        } else {
-          const [binanceRes, portfolioRes] = await Promise.all([
-            fetchDailyPnL(monthKey),
-            fetchPortfolioHistory({ startDate, endDate }),
-          ]);
-
-          const binanceItems = (Array.isArray(binanceRes?.points)
-            ? binanceRes.points
-            : []
-          ).map(mapBinancePoint);
-
-          const portfolioItems = (Array.isArray(portfolioRes?.data)
-            ? portfolioRes.data
-            : []
-          ).map(mapPortfolioPoint);
-
-          nextItems = mergeEntries(binanceItems, portfolioItems);
-        }
+        const scope = mapFilterToScope(filter);
+        const res = await fetchCalendar(scope);
 
         if (!mounted) return;
-        setItems(nextItems);
+        setCalendarData(res);
       } catch (err) {
         if (!mounted) return;
 
@@ -411,7 +277,7 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
           err instanceof Error ? err.message : "Failed to load calendar";
 
         setError(message);
-        setItems([]);
+        setCalendarData(null);
       } finally {
         if (mounted) {
           setLoading(false);
@@ -424,62 +290,86 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
     return () => {
       mounted = false;
     };
-  }, [refreshKey, monthKey, filter]);
+  }, [refreshKey, filter]);
 
-  const weeks = useMemo(() => buildCalendarGrid(monthKey, items), [monthKey, items]);
+  const monthItems = useMemo(() => {
+    const raw = Array.isArray(calendarData?.days) ? calendarData.days : [];
+    return raw.filter((item) => item.date.startsWith(monthKey));
+  }, [calendarData, monthKey]);
+
+  const weeks = useMemo(() => buildCalendarGrid(monthKey, monthItems), [monthKey, monthItems]);
 
   const summary = useMemo(() => {
-    const totals = items.reduce(
-      (acc, item) => {
-        acc.totalPnl += item.totalPnl;
-        acc.realizedPnl += item.realizedPnl;
-        acc.changeUnrealized += item.changeUnrealized;
-        acc.endValue = item.totalValue;
-        acc.binancePnl += item.binancePnl;
-        acc.stockPnl += item.stockPnl;
-        return acc;
-      },
-      {
-        totalPnl: 0,
-        realizedPnl: 0,
-        changeUnrealized: 0,
-        endValue: 0,
-        binancePnl: 0,
-        stockPnl: 0,
-      },
-    );
+    const visibleValues = monthItems.map((item) => ({
+      item,
+      displayPnl: getDisplayDayPnl(item, filter),
+    }));
 
-    const bestDay = getBestDay(items);
-    const worstDay = getWorstDay(items);
-    const averageDailyPnl = getAverageDailyPnl(items);
-    const streak = getCurrentPnlStreak(items);
+    const bestDay =
+      visibleValues.length > 0
+        ? visibleValues.reduce((best, current) => {
+            if (!best || current.displayPnl > best.displayPnl) {
+              return current;
+            }
+
+            return best;
+          }, null as { item: CalendarDay; displayPnl: number } | null)
+        : null;
+
+    const worstDay =
+      visibleValues.length > 0
+        ? visibleValues.reduce((worst, current) => {
+            if (!worst || current.displayPnl < worst.displayPnl) {
+              return current;
+            }
+
+            return worst;
+          }, null as { item: CalendarDay; displayPnl: number } | null)
+        : null;
+
+    const totalPnl = visibleValues.reduce((sum, current) => sum + current.displayPnl, 0);
+    const realizedPnl = monthItems.reduce((sum, item) => sum + Number(item.realizedPnl ?? 0), 0);
+    const unrealizedPnl = monthItems.reduce((sum, item) => sum + Number(item.unrealizedPnl ?? 0), 0);
+    const binancePnl = monthItems.reduce((sum, item) => sum + Number(item.binancePnl ?? 0), 0);
+    const stockPnl = monthItems.reduce((sum, item) => sum + Number(item.stockPnl ?? 0), 0);
+    const fundPnl = monthItems.reduce((sum, item) => sum + Number(item.fundPnl ?? 0), 0);
+    const endValue = Number(monthItems[monthItems.length - 1]?.endValueUsd ?? 0);
+
+    const averageDailyPnl = monthItems.length > 0 ? totalPnl / monthItems.length : 0;
+    const streak = getCurrentPnlStreak(visibleValues.map((item) => item.displayPnl));
 
     return {
-      ...totals,
-      bestDay,
-      worstDay,
+      totalPnl,
+      realizedPnl,
+      unrealizedPnl,
+      binancePnl,
+      stockPnl,
+      fundPnl,
+      endValue,
+      bestDay: bestDay?.item ?? null,
+      bestDayValue: bestDay?.displayPnl ?? 0,
+      worstDay: worstDay?.item ?? null,
+      worstDayValue: worstDay?.displayPnl ?? 0,
       averageDailyPnl,
       streak,
     };
-  }, [items]);
+  }, [monthItems, filter]);
 
   if (loading) {
     return (
       <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="space-y-3">
-          <SkeletonCard className="h-[72px]" />
-          <div className="grid gap-2 md:grid-cols-7">
+        <div className="space-y-2">
+          <SkeletonCard className="h-[72px] rounded-3xl" />
+          <div className="grid gap-1.5 md:grid-cols-7">
             {Array.from({ length: 35 }).map((_, index) => (
-              <SkeletonCard key={index} className="aspect-[1.05/1]" />
+              <SkeletonCard key={index} className="aspect-[1/0.75] rounded-2xl" />
             ))}
           </div>
         </div>
 
-        <aside className="space-y-3">
-          <SkeletonCard className="h-[72px]" />
-          <SkeletonCard className="h-[88px]" />
-          <SkeletonCard className="h-[88px]" />
-          <SkeletonCard className="h-[88px]" />
+        <aside className="space-y-2">
+          <SkeletonCard className="h-[92px] rounded-3xl" />
+          <SkeletonCard className="h-[220px] rounded-3xl" />
         </aside>
       </section>
     );
@@ -487,29 +377,29 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
 
   if (error) {
     return (
-      <section className="rounded-2xl border p-6 dark:border-white/10 dark:bg-white/[0.02]">
-        <h2 className="text-xl font-semibold">Portfolio Calendar</h2>
-        <p className="mt-2 text-sm text-red-600 dark:text-red-400">{error}</p>
+      <section className="rounded-3xl border border-rose-200 bg-rose-50/80 p-5 shadow-[0_12px_34px_rgba(244,63,94,0.08)]">
+        <h2 className="text-lg font-semibold text-slate-900">Portfolio Calendar</h2>
+        <p className="mt-2 text-sm text-rose-600">{error}</p>
       </section>
     );
   }
 
   const totalPnlTone = getValueTone(summary.totalPnl);
   const realizedTone = getValueTone(summary.realizedPnl);
-  const unrealizedTone = getValueTone(summary.changeUnrealized);
+  const unrealizedTone = getValueTone(summary.unrealizedPnl);
   const endValueTone = getValueTone(summary.endValue);
-  const bestDayTone = getValueTone(summary.bestDay?.totalPnl ?? 0);
-  const worstDayTone = getValueTone(summary.worstDay?.totalPnl ?? 0);
+  const bestDayTone = getValueTone(summary.bestDayValue);
+  const worstDayTone = getValueTone(summary.worstDayValue);
   const avgTone = getValueTone(summary.averageDailyPnl);
   const streakTone = getStreakTone(summary.streak);
 
   return (
     <section className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_300px]">
       <div className="space-y-3">
-        <div className="flex flex-col gap-3 rounded-2xl border p-4 dark:border-white/10 dark:bg-white/[0.02] lg:flex-row lg:items-center lg:justify-between">
+        <div className="flex flex-col gap-3 rounded-3xl border border-slate-200/70 bg-white/80 p-5 shadow-[0_14px_34px_rgba(15,23,42,0.05)] lg:flex-row lg:items-center lg:justify-between">
           <div>
-            <h2 className="text-xl font-semibold">Portfolio Calendar</h2>
-            <p className="text-sm text-muted-foreground">
+            <h2 className="text-lg font-semibold text-slate-900">Portfolio Calendar</h2>
+            <p className="text-sm text-slate-500">
               {filter === "binance"
                 ? "Binance daily PnL"
                 : filter === "innovestx"
@@ -522,19 +412,19 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
             <button
               type="button"
               onClick={() => setMonthKey((prev) => shiftMonth(prev, -1))}
-              className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-muted dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
             >
               ←
             </button>
 
-            <div className="min-w-[150px] rounded-xl border bg-muted/30 px-4 py-2 text-center text-sm font-semibold dark:border-white/10 dark:bg-white/[0.04]">
+            <div className="min-w-[138px] rounded-2xl border border-slate-200 bg-slate-50/80 px-4 py-2 text-center text-sm font-semibold text-slate-900 shadow-sm">
               {getMonthLabelFromKey(monthKey)}
             </div>
 
             <button
               type="button"
               onClick={() => setMonthKey((prev) => shiftMonth(prev, 1))}
-              className="rounded-xl border px-3 py-2 text-sm font-medium hover:bg-muted dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
+              className="rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-medium text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
             >
               →
             </button>
@@ -542,52 +432,53 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
             <button
               type="button"
               onClick={() => setMonthKey(formatMonthKey(new Date()))}
-              className="ml-1 rounded-xl border bg-background px-3 py-2 text-xs font-semibold hover:bg-muted dark:border-white/10 dark:bg-white/[0.03] dark:hover:bg-white/[0.06]"
+              className="ml-1 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-xs font-semibold text-slate-700 shadow-sm transition hover:-translate-y-0.5 hover:bg-slate-50"
             >
               Today
             </button>
           </div>
         </div>
 
-        <div className="hidden grid-cols-7 gap-2 md:grid">
+        <div className="hidden grid-cols-7 gap-1 md:grid">
           {weekdayLabels.map((label) => (
             <div
               key={label}
-              className="px-1 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground"
+              className="px-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-400"
             >
               {label}
             </div>
           ))}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-1.5">
           {weeks.map((week, weekIndex) => (
-            <div key={`week-${weekIndex}`} className="grid gap-2 md:grid-cols-7">
+            <div key={`week-${weekIndex}`} className="grid gap-1.5 md:grid-cols-7">
               {week.map((cell, dayIndex) => {
                 const dayNumber = cell.date.slice(-2);
                 const isToday = isTodayBangkok(cell.date);
+                const entryDisplayPnl = cell.entry ? getDisplayDayPnl(cell.entry, filter) : 0;
+
                 const tone = cell.entry
-                  ? getValueTone(cell.entry.totalPnl)
+                  ? getValueTone(entryDisplayPnl)
                   : {
-                      wrapper:
-                        "border-border bg-background/70 dark:border-white/10 dark:bg-white/[0.03]",
-                      text: "text-foreground",
-                      accent: "bg-muted-foreground/20 dark:bg-white/10",
-                      subtext: "text-muted-foreground",
+                      wrapper: "border-slate-200/80 bg-white/60",
+                      text: "text-slate-900",
+                      accent: "bg-slate-300",
+                      subtext: "text-slate-500",
                     };
 
                 return (
                   <div
                     key={`${cell.date}-${dayIndex}`}
-                    className={`relative aspect-[1.05/1] overflow-hidden rounded-xl border p-2 transition ${
-                      cell.entry ? "hover:shadow-sm dark:shadow-none" : ""
+                    className={`relative aspect-[1/0.75] overflow-hidden rounded-2xl border p-2 transition ${
+                      cell.entry ? "shadow-sm hover:-translate-y-[1px]" : ""
                     } ${
                       cell.inCurrentMonth
                         ? tone.wrapper
-                        : "border-dashed bg-muted/10 opacity-65 dark:border-white/10 dark:bg-white/[0.02]"
+                        : "border-dashed border-slate-200/80 bg-slate-50/40 opacity-70"
                     } ${
                       isToday && cell.inCurrentMonth
-                        ? "ring-2 ring-foreground/15 dark:ring-white/20"
+                        ? "ring-2 ring-slate-300/80"
                         : ""
                     }`}
                   >
@@ -596,19 +487,17 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
                     ) : null}
 
                     <div className="flex h-full flex-col">
-                      <div className="mb-1 flex items-start justify-between gap-2">
+                      <div className="mb-1 flex items-start justify-between gap-1">
                         <p
-                          className={`text-xl font-bold leading-none ${
-                            cell.inCurrentMonth
-                              ? "text-foreground"
-                              : "text-muted-foreground"
+                          className={`text-base font-bold leading-none ${
+                            cell.inCurrentMonth ? "text-slate-900" : "text-slate-400"
                           }`}
                         >
                           {dayNumber}
                         </p>
 
                         {isToday && cell.inCurrentMonth ? (
-                          <span className="rounded-full border bg-background/70 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-foreground dark:border-white/10 dark:bg-white/[0.08] dark:text-white">
+                          <span className="rounded-full border border-slate-200 bg-white/90 px-1.5 py-0.5 text-[8px] font-semibold uppercase tracking-wide text-slate-700 shadow-sm">
                             Today
                           </span>
                         ) : null}
@@ -617,33 +506,40 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
                       {cell.entry ? (
                         <div className="mt-auto space-y-1">
                           <p className={`text-sm font-semibold ${tone.text}`}>
-                            {formatSignedMoney(cell.entry.totalPnl)}
+                            {formatSignedMoney(entryDisplayPnl)}
                           </p>
 
-                          <div className="space-y-0.5 text-[10px] text-muted-foreground">
+                          <div className="space-y-0.5 text-[9px] text-slate-500">
                             {filter !== "innovestx" ? (
                               <div className="flex items-center justify-between gap-2">
                                 <span>Binance</span>
-                                <span>{formatSignedMoney(cell.entry.binancePnl)}</span>
+                                <span>{formatSignedMoney(Number(cell.entry.binancePnl ?? 0))}</span>
                               </div>
                             ) : null}
 
                             {filter !== "binance" ? (
-                              <div className="flex items-center justify-between gap-2">
-                                <span>Stock</span>
-                                <span>{formatSignedMoney(cell.entry.stockPnl)}</span>
-                              </div>
+                              <>
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>Stock</span>
+                                  <span>{formatSignedMoney(Number(cell.entry.stockPnl ?? 0))}</span>
+                                </div>
+
+                                <div className="flex items-center justify-between gap-2">
+                                  <span>Fund</span>
+                                  <span>{formatSignedMoney(Number(cell.entry.fundPnl ?? 0))}</span>
+                                </div>
+                              </>
                             ) : null}
 
                             <div className="flex items-center justify-between gap-2">
                               <span>Value</span>
-                              <span>{formatMoney(cell.entry.totalValue)}</span>
+                              <span>{formatMoney(Number(cell.entry.endValueUsd ?? 0))}</span>
                             </div>
                           </div>
                         </div>
                       ) : (
                         <div className="mt-auto">
-                          <p className="text-[10px] text-muted-foreground">
+                          <p className="text-[9px] text-slate-400">
                             {cell.inCurrentMonth ? "No data" : ""}
                           </p>
                         </div>
@@ -658,11 +554,11 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
       </div>
 
       <aside className="space-y-3">
-        <div className="rounded-2xl border p-4 dark:border-white/10 dark:bg-white/[0.02]">
-          <p className="text-sm font-semibold">Month Summary</p>
+        <div className="rounded-3xl border border-slate-200/70 bg-white/80 p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+          <p className="text-sm font-semibold text-slate-900">Month Summary</p>
 
           <div className="mt-3 grid gap-3">
-            <div className={`rounded-xl border p-3 ${totalPnlTone.wrapper}`}>
+            <div className={`rounded-2xl border p-3 shadow-sm ${totalPnlTone.wrapper}`}>
               <p className={`text-xs ${totalPnlTone.subtext}`}>Total PnL</p>
               <p className={`mt-1 text-lg font-semibold ${totalPnlTone.text}`}>
                 {formatSignedMoney(summary.totalPnl)}
@@ -670,22 +566,22 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className={`rounded-xl border p-3 ${realizedTone.wrapper}`}>
+              <div className={`rounded-2xl border p-3 shadow-sm ${realizedTone.wrapper}`}>
                 <p className={`text-xs ${realizedTone.subtext}`}>Realized</p>
                 <p className={`mt-1 text-sm font-semibold ${realizedTone.text}`}>
                   {formatSignedMoney(summary.realizedPnl)}
                 </p>
               </div>
 
-              <div className={`rounded-xl border p-3 ${unrealizedTone.wrapper}`}>
+              <div className={`rounded-2xl border p-3 shadow-sm ${unrealizedTone.wrapper}`}>
                 <p className={`text-xs ${unrealizedTone.subtext}`}>Δ Unrealized</p>
                 <p className={`mt-1 text-sm font-semibold ${unrealizedTone.text}`}>
-                  {formatSignedMoney(summary.changeUnrealized)}
+                  {formatSignedMoney(summary.unrealizedPnl)}
                 </p>
               </div>
             </div>
 
-            <div className={`rounded-xl border p-3 ${endValueTone.wrapper}`}>
+            <div className={`rounded-2xl border p-3 shadow-sm ${endValueTone.wrapper}`}>
               <p className={`text-xs ${endValueTone.subtext}`}>End Value</p>
               <p className={`mt-1 text-sm font-semibold ${endValueTone.text}`}>
                 {formatMoney(summary.endValue)}
@@ -694,58 +590,67 @@ export default function CalendarTab({ refreshKey, filter }: Props) {
 
             {filter === "all" ? (
               <div className="grid grid-cols-2 gap-3">
-                <div className="rounded-xl border p-3 dark:border-white/10 dark:bg-white/[0.03]">
-                  <p className="text-xs text-muted-foreground">Binance PnL</p>
-                  <p className="mt-1 text-sm font-semibold">
+                <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-3 shadow-sm">
+                  <p className="text-xs text-slate-500">Δ Binance PnL</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatSignedMoney(summary.binancePnl)}
                   </p>
                 </div>
 
-                <div className="rounded-xl border p-3 dark:border-white/10 dark:bg-white/[0.03]">
-                  <p className="text-xs text-muted-foreground">Stock PnL</p>
-                  <p className="mt-1 text-sm font-semibold">
+                <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-3 shadow-sm">
+                  <p className="text-xs text-slate-500">Δ Stock PnL</p>
+                  <p className="mt-1 text-sm font-semibold text-slate-900">
                     {formatSignedMoney(summary.stockPnl)}
                   </p>
                 </div>
               </div>
             ) : null}
+
+            {filter !== "binance" ? (
+              <div className="rounded-2xl border border-slate-200/70 bg-white/70 p-3 shadow-sm">
+                <p className="text-xs text-slate-500">Δ Fund PnL</p>
+                <p className="mt-1 text-sm font-semibold text-slate-900">
+                  {formatSignedMoney(summary.fundPnl)}
+                </p>
+              </div>
+            ) : null}
           </div>
         </div>
 
-        <div className="rounded-2xl border p-4 dark:border-white/10 dark:bg-white/[0.02]">
-          <p className="text-sm font-semibold">Stats</p>
+        <div className="rounded-3xl border border-slate-200/70 bg-white/80 p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+          <p className="text-sm font-semibold text-slate-900">Stats</p>
 
           <div className="mt-3 space-y-3">
-            <div className={`rounded-xl border p-3 ${bestDayTone.wrapper}`}>
+            <div className={`rounded-2xl border p-3 shadow-sm ${bestDayTone.wrapper}`}>
               <p className={`text-xs ${bestDayTone.subtext}`}>Best Day</p>
               <p className={`mt-1 text-sm font-semibold ${bestDayTone.text}`}>
                 {summary.bestDay
                   ? `${formatDayLabel(summary.bestDay.date)} · ${formatSignedMoney(
-                      summary.bestDay.totalPnl,
+                      summary.bestDayValue,
                     )}`
                   : "-"}
               </p>
             </div>
 
-            <div className={`rounded-xl border p-3 ${worstDayTone.wrapper}`}>
+            <div className={`rounded-2xl border p-3 shadow-sm ${worstDayTone.wrapper}`}>
               <p className={`text-xs ${worstDayTone.subtext}`}>Worst Day</p>
               <p className={`mt-1 text-sm font-semibold ${worstDayTone.text}`}>
                 {summary.worstDay
                   ? `${formatDayLabel(summary.worstDay.date)} · ${formatSignedMoney(
-                      summary.worstDay.totalPnl,
+                      summary.worstDayValue,
                     )}`
                   : "-"}
               </p>
             </div>
 
-            <div className={`rounded-xl border p-3 ${avgTone.wrapper}`}>
+            <div className={`rounded-2xl border p-3 shadow-sm ${avgTone.wrapper}`}>
               <p className={`text-xs ${avgTone.subtext}`}>Average Daily PnL</p>
               <p className={`mt-1 text-sm font-semibold ${avgTone.text}`}>
                 {formatSignedMoney(summary.averageDailyPnl)}
               </p>
             </div>
 
-            <div className={`rounded-xl border p-3 ${streakTone.card}`}>
+            <div className={`rounded-2xl border p-3 shadow-sm ${streakTone.card}`}>
               <p className={`text-xs ${streakTone.subtext}`}>Streak</p>
               <p className={`mt-1 text-sm font-semibold ${streakTone.text}`}>
                 {summary.streak.label}

@@ -11,6 +11,7 @@ import type {
 import type {
   CreateAccountInput,
   CreateAssetInput,
+  CreateAssetFromProviderInput,
   LinkAssetToAccountInput,
   UpdateBinanceAccountSettingsInput
 } from "./store.schemas";
@@ -107,6 +108,78 @@ export async function createAsset(input: CreateAssetInput): Promise<AssetRecord>
     source: input.source,
     category: input.category,
     currency: input.currency,
+    metadata: null,
+    createdAt: now,
+    updatedAt: now
+  };
+
+  store.assets.push(record);
+  await writeStore(store);
+
+  return record;
+}
+
+export async function createAssetFromProvider(
+  input: CreateAssetFromProviderInput
+): Promise<AssetRecord> {
+  const store = await readStore();
+  const now = new Date().toISOString();
+
+  if (input.provider === "twelvedata") {
+    const duplicated = store.assets.find(
+      (asset) =>
+        asset.source === "stock" &&
+        asset.symbol.toLowerCase() === input.symbol.toLowerCase()
+    );
+
+    if (duplicated) {
+      throw new ValidationError("Asset already exists");
+    }
+
+    const record: AssetRecord = {
+      id: randomUUID(),
+      symbol: input.symbol,
+      name: input.name,
+      source: "stock",
+      category: "stock",
+      currency: input.currency,
+      metadata: {
+        provider: "twelvedata",
+        exchange: input.exchange ?? null,
+        projId: null
+      },
+      createdAt: now,
+      updatedAt: now
+    };
+
+    store.assets.push(record);
+    await writeStore(store);
+
+    return record;
+  }
+
+  const duplicated = store.assets.find(
+    (asset) =>
+      asset.source === "fund" &&
+      asset.symbol.toLowerCase() === input.symbol.toLowerCase()
+  );
+
+  if (duplicated) {
+    throw new ValidationError("Asset already exists");
+  }
+
+  const record: AssetRecord = {
+    id: randomUUID(),
+    symbol: input.symbol,
+    name: input.name,
+    source: "fund",
+    category: "fund",
+    currency: input.currency,
+    metadata: {
+      provider: "sec",
+      exchange: null,
+      projId: input.projId
+    },
     createdAt: now,
     updatedAt: now
   };
@@ -184,4 +257,78 @@ export async function linkAssetToAccount(input: LinkAssetToAccountInput): Promis
   await writeStore(store);
 
   return record;
+}
+
+export async function updateAccountAssetLinkQuantity(
+  linkId: string,
+  quantity: number
+): Promise<AccountAssetLinkRecord> {
+  const store = await readStore();
+  const now = new Date().toISOString();
+
+  const link = store.accountAssetLinks.find((l) => l.id === linkId);
+  if (!link) {
+    throw new NotFoundError("Link not found");
+  }
+
+  if (!Number.isFinite(quantity) || quantity < 0) {
+    throw new ValidationError("Invalid quantity");
+  }
+
+  link.quantity = quantity;
+  link.updatedAt = now;
+
+  await writeStore(store);
+
+  return link;
+}
+
+export async function unlinkAssetFromAccount(linkId: string): Promise<void> {
+  const store = await readStore();
+
+  const index = store.accountAssetLinks.findIndex((l) => l.id === linkId);
+
+  if (index === -1) {
+    throw new NotFoundError("Link not found");
+  }
+
+  store.accountAssetLinks.splice(index, 1);
+
+  await writeStore(store);
+}
+
+export async function updateAccountName(
+  accountId: string,
+  name: string
+): Promise<AccountRecord> {
+  const store = await readStore();
+  const now = new Date().toISOString();
+  const normalizedName = name.trim();
+
+  if (!normalizedName) {
+    throw new ValidationError("Name is required");
+  }
+
+  const account = store.accounts.find((a) => a.id === accountId);
+
+  if (!account) {
+    throw new NotFoundError("Account not found");
+  }
+
+  const duplicated = store.accounts.find(
+    (item) =>
+      item.id !== accountId &&
+      item.name.toLowerCase() === normalizedName.toLowerCase()
+  );
+
+  if (duplicated) {
+    throw new ValidationError("Account name already exists");
+  }
+
+  account.name = normalizedName;
+  account.updatedAt = now;
+
+  await writeStore(store);
+
+  return account;
 }

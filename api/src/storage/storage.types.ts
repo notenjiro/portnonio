@@ -20,6 +20,12 @@ export interface AccountRecord {
   updatedAt: string;
 }
 
+export interface AssetMetadata {
+  provider?: "twelvedata" | "sec";
+  exchange?: string | null;
+  projId?: string | null;
+}
+
 export interface AssetRecord {
   id: string;
   symbol: string;
@@ -27,6 +33,7 @@ export interface AssetRecord {
   source: AccountSource;
   category: AssetCategory;
   currency: string;
+  metadata: AssetMetadata | null;
   createdAt: string;
   updatedAt: string;
 }
