@@ -18,6 +18,17 @@ import {
   updateAccountName,
   type StoreAccountItem,
 } from "@/lib/api";
+import { Toaster, toast } from "sonner";
+
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 type TabKey = "overview" | "calendar" | "positions";
 type FilterKey = "all" | "binance" | "innovestx";
@@ -80,6 +91,10 @@ export default function App() {
   const [accounts, setAccounts] = useState<StoreAccountItem[]>([]);
   const [isAccountMenuOpen, setIsAccountMenuOpen] = useState(false);
 
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false);
+  const [renameTarget, setRenameTarget] = useState<StoreAccountItem | null>(null);
+  const [renameValue, setRenameValue] = useState("");
+
   const accountMenuRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -128,6 +143,8 @@ export default function App() {
       return;
     }
 
+    const loadingToastId = toast.loading("Re-syncing portfolio data...");
+
     try {
       setIsResyncing(true);
 
@@ -137,37 +154,55 @@ export default function App() {
         "Re-sync timed out after 20 seconds",
       );
 
+      toast.success("Re-sync completed", { id: loadingToastId });
       setRefreshKey((prev) => prev + 1);
     } catch (error) {
       console.error("Failed to re-sync portfolio data:", error);
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to re-sync portfolio data",
+        { id: loadingToastId }
       );
     } finally {
       setIsResyncing(false);
     }
   }
 
-  async function handleRenameAccount(account: StoreAccountItem) {
-    const nextName = window.prompt("Rename account", account.name);
+  function handleRenameAccount(account: StoreAccountItem) {
+    setRenameTarget(account);
+    setRenameValue(account.name);
+    setRenameDialogOpen(true);
+  }
 
-    if (!nextName || nextName.trim() === account.name) {
+  async function submitRenameAccount() {
+    if (!renameTarget) {
+      return;
+    }
+
+    const trimmedName = renameValue.trim();
+
+    if (!trimmedName || trimmedName === renameTarget.name) {
+      setRenameDialogOpen(false);
+      setRenameTarget(null);
       return;
     }
 
     try {
-      await updateAccountName(account.id, nextName.trim());
+      await updateAccountName(renameTarget.id, trimmedName);
       await loadAccounts();
       setRefreshKey((prev) => prev + 1);
       setIsAccountMenuOpen(false);
+      toast.success("Account renamed");
     } catch (error) {
-      alert(
+      toast.error(
         error instanceof Error
           ? error.message
           : "Failed to rename account",
       );
+    } finally {
+      setRenameDialogOpen(false);
+      setRenameTarget(null);
     }
   }
 
@@ -175,6 +210,51 @@ export default function App() {
 
   return (
     <div className="mx-auto min-h-screen max-w-[1478px] text-foreground">
+      <Toaster position="top-right" richColors />
+
+      <Dialog
+        open={renameDialogOpen}
+        onOpenChange={(open) => {
+          setRenameDialogOpen(open);
+          if (!open) {
+            setRenameTarget(null);
+          }
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Rename account</DialogTitle>
+          </DialogHeader>
+
+          <Input
+            value={renameValue}
+            onChange={(event) => setRenameValue(event.target.value)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter") {
+                event.preventDefault();
+                void submitRenameAccount();
+              }
+            }}
+            autoFocus
+          />
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setRenameDialogOpen(false);
+                setRenameTarget(null);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={() => void submitRenameAccount()}>
+              Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <header className="border-b border-slate-200/70 bg-white px-6 py-4 dark:border-white/10 dark:bg-slate-950">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white">
@@ -294,7 +374,7 @@ export default function App() {
 
                           <button
                             type="button"
-                            onClick={() => void handleRenameAccount(account)}
+                            onClick={() => handleRenameAccount(account)}
                             className="inline-flex items-center gap-1 rounded-lg border border-slate-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-slate-700 transition hover:bg-slate-50 dark:border-white/10 dark:bg-white/5 dark:text-slate-200 dark:hover:bg-white/10"
                           >
                             <Pencil className="h-3.5 w-3.5" />

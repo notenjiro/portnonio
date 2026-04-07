@@ -10,13 +10,13 @@ export interface AggregatedBinancePortfolioResponse {
   accountCount: number;
   spot: {
     holdings: BinanceSpotHolding[];
-    totalValueUsd: number;
+    totalValue: number; // 👈 rename
     pricedCount: number;
     unpricedCount: number;
   };
   futures: {
     positions: BinanceFuturesPosition[];
-    totalNotionalUsd: number;
+    totalNotional: number; // 👈 rename
     totalUnrealizedPnl: number;
     positionCount: number;
   };
@@ -26,13 +26,13 @@ export interface DashboardSummaryCard {
   key: string;
   label: string;
   value: number;
-  unit: "USD" | "COUNT";
+  unit: "THB" | "COUNT"; // 👈 เปลี่ยนจาก USD
 }
 
 export interface DashboardRiskSection {
-  futuresUnrealizedPnlUsd: number;
-  futuresNotionalUsd: number;
-  spotValueUsd: number;
+  futuresUnrealizedPnl: number; // 👈 rename
+  futuresNotional: number;      // 👈 rename
+  spotValue: number;            // 👈 rename
   pricedSpotCount: number;
   unpricedSpotCount: number;
   openFuturesPositions: number;
@@ -41,7 +41,7 @@ export interface DashboardRiskSection {
 export interface DashboardAllocationItem {
   key: string;
   label: string;
-  valueUsd: number;
+  value: number; // 👈 rename
   weight: number;
 }
 

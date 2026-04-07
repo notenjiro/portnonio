@@ -1,10 +1,14 @@
 export type Summary = {
+  baseCurrency: string // 👈 เพิ่ม
+
   totalValue: number
   todayPnL: number
   accounts: number
+
   spotValue: number
   futuresWallet: number
   futuresPnL: number
+
   stockValue: number
   fundValue: number
   cashBalance: number
@@ -38,6 +42,7 @@ export type StockHolding = {
   marketValue: number
   costValue: number
   unrealizedPnL: number
+
   lastSyncedAt?: string
   lastSyncStatus?: SyncStatus
   lastSyncMessage?: string
@@ -53,6 +58,7 @@ export type FundHolding = {
   marketValue: number
   costValue: number
   unrealizedPnL: number
+
   lastSyncedAt?: string
   lastSyncStatus?: SyncStatus
   lastSyncMessage?: string
@@ -61,12 +67,16 @@ export type FundHolding = {
 }
 
 export type Breakdown = {
+  baseCurrency: string // 👈 เพิ่ม
+
   spotValue: number
   futuresWallet: number
   futuresPnL: number
+
   stockValue: number
   fundValue: number
   cashBalance: number
+
   spotHoldings: SpotHolding[]
   futuresPositions: FuturesPosition[]
   stockHoldings: StockHolding[]
@@ -75,6 +85,9 @@ export type Breakdown = {
 
 export type EquityPoint = {
   date: string
+
+  baseCurrency: string // 👈 เพิ่ม
+
   totalValue: number
   spotValue: number
   futuresWallet: number
@@ -93,6 +106,9 @@ export type AccountBreakdownItem = {
   id: string
   provider: "binance" | "innovestx"
   createdAt: string
+
+  baseCurrency: string // 👈 เพิ่ม
+
   totalValue: number
   spotValue: number
   futuresWallet: number

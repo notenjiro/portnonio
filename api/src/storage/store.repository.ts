@@ -1,23 +1,52 @@
 import { paths } from "../config/paths";
 import { readJsonFile, writeJsonFile } from "./json-file";
-import type { StoreData } from "./storage.types";
+import type { StoreData, AccountRecord } from "./storage.types";
+
+const DEFAULT_SYSTEM_CURRENCY: "USD" | "THB" = "THB";
+
+function getDefaultAccountCurrency(source: string): "USD" | "THB" {
+  if (source === "binance") return "USD";
+  return "THB";
+}
 
 const defaultStoreData: StoreData = {
   version: 1,
-  baseCurrency: "USD",
+  baseCurrency: DEFAULT_SYSTEM_CURRENCY,
   accounts: [],
   assets: [],
   accountAssetLinks: []
 };
 
+function normalizeAccount(account: any): AccountRecord {
+  return {
+    ...account,
+    baseCurrency:
+      account?.baseCurrency === "USD" || account?.baseCurrency === "THB"
+        ? account.baseCurrency
+        : getDefaultAccountCurrency(account?.source)
+  };
+}
+
 function normalizeStoreData(input: Partial<StoreData> | null | undefined): StoreData {
   return {
     version: 1,
-    baseCurrency: "USD",
-    accounts: Array.isArray(input?.accounts) ? input.accounts : [],
+
+    baseCurrency:
+      input?.baseCurrency === "USD" || input?.baseCurrency === "THB"
+        ? input.baseCurrency
+        : DEFAULT_SYSTEM_CURRENCY,
+
+    accounts: Array.isArray(input?.accounts)
+      ? input.accounts.map(normalizeAccount)
+      : [],
+
     assets: Array.isArray(input?.assets)
       ? input.assets.map((asset: any) => ({
           ...asset,
+          currency:
+            asset?.currency === "USD" || asset?.currency === "THB"
+              ? asset.currency
+              : "THB",
           metadata:
             asset?.metadata && typeof asset.metadata === "object"
               ? {
@@ -37,6 +66,7 @@ function normalizeStoreData(input: Partial<StoreData> | null | undefined): Store
               : null
         }))
       : [],
+
     accountAssetLinks: Array.isArray(input?.accountAssetLinks)
       ? input.accountAssetLinks.map((link: any) => ({
           ...link,

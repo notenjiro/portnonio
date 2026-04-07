@@ -11,6 +11,9 @@ import type {
 } from "../../storage/history.types";
 
 import type { OverviewResponse } from "./overview.types";
+import { convertAmount } from "../../services/fx-rate.service";
+
+const BASE_CURRENCY = "THB";
 
 function roundNumber(value: number): number {
   return Number(value.toFixed(8));
@@ -25,14 +28,7 @@ function getLatestBinanceDate(records: BinanceDailyHistoryRecord[]): string | nu
   return sorted[sorted.length - 1]?.date ?? null;
 }
 
-function aggregateLatestBinanceDay(records: BinanceDailyHistoryRecord[]): {
-  date: string | null;
-  fetchedAt: string | null;
-  totalTrackedUsd: number;
-  spotValueUsd: number;
-  futuresNotionalUsd: number;
-  futuresUnrealizedPnl: number;
-} {
+function aggregateLatestBinanceDay(records: BinanceDailyHistoryRecord[]) {
   const latestDate = getLatestBinanceDate(records);
 
   if (!latestDate) {
@@ -107,16 +103,43 @@ export async function getOverviewData(): Promise<OverviewResponse> {
     quantityByAsset.set(link.assetId, link.quantity ?? 1);
   }
 
-  const stockTrackedUsd = roundNumber(
-    latestMarketRecords.reduce((sum, record) => {
-      const qty = quantityByAsset.get(record.assetId) ?? 1;
-      return sum + record.close * qty;
-    }, 0)
+  /**
+   * 📈 STOCK (USD → THB)
+   */
+  let stockTrackedTHB = 0;
+
+  for (const record of latestMarketRecords) {
+    const qty = quantityByAsset.get(record.assetId) ?? 1;
+
+    const valueTHB = await convertAmount(
+      record.close * qty,
+      "USD",
+      BASE_CURRENCY,
+      record.date
+    );
+
+    stockTrackedTHB += valueTHB;
+  }
+
+  stockTrackedTHB = roundNumber(stockTrackedTHB);
+
+  /**
+   * 🟡 BINANCE (USD → THB)
+   */
+  const binanceTrackedTHB = roundNumber(
+    await convertAmount(
+      latestBinance.totalTrackedUsd,
+      "USD",
+      BASE_CURRENCY,
+      latestBinance.date ?? undefined
+    )
   );
 
-  const binanceTrackedUsd = latestBinance.totalTrackedUsd;
-  const totalTrackedUsd = roundNumber(binanceTrackedUsd + stockTrackedUsd);
+  const totalTrackedTHB = roundNumber(binanceTrackedTHB + stockTrackedTHB);
 
+  /**
+   * 📅 CALENDAR
+   */
   const totalPnl = roundNumber(
     calendarDays.reduce((sum, day) => sum + (day.totalPnl ?? 0), 0)
   );
@@ -131,18 +154,38 @@ export async function getOverviewData(): Promise<OverviewResponse> {
       latestBinance.fetchedAt ??
       latestMarketRecords[latestMarketRecords.length - 1]?.updatedAt ??
       null,
+
+    baseCurrency: BASE_CURRENCY, // 👈 เพิ่มตรงนี้
+
     totals: {
-      totalTrackedUsd,
-      binanceTrackedUsd,
-      stockTrackedUsd,
-      fundTrackedUsd: 0,
-      cashTrackedUsd: 0
+      totalTrackedValue: totalTrackedTHB,
+      binanceTrackedValue: binanceTrackedTHB,
+      stockTrackedValue: stockTrackedTHB,
+      fundTrackedValue: 0,
+      cashTrackedValue: 0
     },
+
     binance: {
-      spotValueUsd: latestBinance.spotValueUsd,
-      futuresNotionalUsd: latestBinance.futuresNotionalUsd,
-      futuresUnrealizedPnl: latestBinance.futuresUnrealizedPnl
+      spotValue: await convertAmount(
+        latestBinance.spotValueUsd,
+        "USD",
+        BASE_CURRENCY,
+        latestBinance.date ?? undefined
+      ),
+      futuresNotional: await convertAmount(
+        latestBinance.futuresNotionalUsd,
+        "USD",
+        BASE_CURRENCY,
+        latestBinance.date ?? undefined
+      ),
+      futuresUnrealizedPnl: await convertAmount(
+        latestBinance.futuresUnrealizedPnl,
+        "USD",
+        BASE_CURRENCY,
+        latestBinance.date ?? undefined
+      )
     },
+
     calendar: {
       totalPnl,
       averagePnl,

@@ -1,20 +1,34 @@
 import { randomUUID } from "crypto";
 import { NotFoundError, ValidationError } from "../../shared/errors";
-import { getDefaultStoreData, readStore, writeStore } from "../../storage/store.repository";
+import {
+  getDefaultStoreData,
+  readStore,
+  writeStore,
+} from "../../storage/store.repository";
 import type {
   AccountAssetLinkRecord,
   AccountRecord,
   AssetRecord,
   StoreData,
-  AccountSource
+  AccountSource,
 } from "../../storage/storage.types";
 import type {
   CreateAccountInput,
   CreateAssetInput,
   CreateAssetFromProviderInput,
   LinkAssetToAccountInput,
-  UpdateBinanceAccountSettingsInput
+  UpdateBinanceAccountSettingsInput,
 } from "./store.schemas";
+
+function normalizeCurrency(value: string): "USD" | "THB" {
+  const upper = value.toUpperCase();
+
+  if (upper === "USD" || upper === "THB") {
+    return upper;
+  }
+
+  throw new ValidationError(`Unsupported currency: ${value}`);
+}
 
 export async function getStore(): Promise<StoreData> {
   return readStore();
@@ -26,7 +40,9 @@ export async function bootstrapStore(): Promise<StoreData> {
   return defaultStore;
 }
 
-export async function listAccounts(source?: AccountSource): Promise<AccountRecord[]> {
+export async function listAccounts(
+  source?: AccountSource,
+): Promise<AccountRecord[]> {
   const store = await readStore();
 
   if (!source) {
@@ -36,7 +52,9 @@ export async function listAccounts(source?: AccountSource): Promise<AccountRecor
   return store.accounts.filter((account) => account.source === source);
 }
 
-export async function listAssets(source?: AccountSource): Promise<AssetRecord[]> {
+export async function listAssets(
+  source?: AccountSource,
+): Promise<AssetRecord[]> {
   const store = await readStore();
 
   if (!source) {
@@ -46,7 +64,9 @@ export async function listAssets(source?: AccountSource): Promise<AssetRecord[]>
   return store.assets.filter((asset) => asset.source === source);
 }
 
-export async function listAccountAssetLinks(accountId?: string): Promise<AccountAssetLinkRecord[]> {
+export async function listAccountAssetLinks(
+  accountId?: string,
+): Promise<AccountAssetLinkRecord[]> {
   const store = await readStore();
 
   if (!accountId) {
@@ -56,7 +76,9 @@ export async function listAccountAssetLinks(accountId?: string): Promise<Account
   return store.accountAssetLinks.filter((link) => link.accountId === accountId);
 }
 
-export async function createAccount(input: CreateAccountInput): Promise<AccountRecord> {
+export async function createAccount(
+  input: CreateAccountInput,
+): Promise<AccountRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
 
@@ -64,11 +86,16 @@ export async function createAccount(input: CreateAccountInput): Promise<AccountR
     (account) =>
       account.source === input.source &&
       account.provider.toLowerCase() === input.provider.toLowerCase() &&
-      account.name.toLowerCase() === input.name.toLowerCase()
+      account.name.toLowerCase() === input.name.toLowerCase(),
   );
 
   if (duplicated) {
     throw new ValidationError("Account already exists");
+  }
+
+  function getDefaultAccountCurrency(source: AccountSource): "USD" | "THB" {
+    if (source === "binance") return "USD";
+    return "THB";
   }
 
   const record: AccountRecord = {
@@ -76,9 +103,12 @@ export async function createAccount(input: CreateAccountInput): Promise<AccountR
     name: input.name,
     source: input.source,
     provider: input.provider,
+
+    baseCurrency: getDefaultAccountCurrency(input.source),
+
     settings: null,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
 
   store.accounts.push(record);
@@ -87,14 +117,16 @@ export async function createAccount(input: CreateAccountInput): Promise<AccountR
   return record;
 }
 
-export async function createAsset(input: CreateAssetInput): Promise<AssetRecord> {
+export async function createAsset(
+  input: CreateAssetInput,
+): Promise<AssetRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
 
   const duplicated = store.assets.find(
     (asset) =>
       asset.source === input.source &&
-      asset.symbol.toLowerCase() === input.symbol.toLowerCase()
+      asset.symbol.toLowerCase() === input.symbol.toLowerCase(),
   );
 
   if (duplicated) {
@@ -107,10 +139,10 @@ export async function createAsset(input: CreateAssetInput): Promise<AssetRecord>
     name: input.name,
     source: input.source,
     category: input.category,
-    currency: input.currency,
+    currency: normalizeCurrency(input.currency),
     metadata: null,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
 
   store.assets.push(record);
@@ -120,7 +152,7 @@ export async function createAsset(input: CreateAssetInput): Promise<AssetRecord>
 }
 
 export async function createAssetFromProvider(
-  input: CreateAssetFromProviderInput
+  input: CreateAssetFromProviderInput,
 ): Promise<AssetRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
@@ -129,7 +161,7 @@ export async function createAssetFromProvider(
     const duplicated = store.assets.find(
       (asset) =>
         asset.source === "stock" &&
-        asset.symbol.toLowerCase() === input.symbol.toLowerCase()
+        asset.symbol.toLowerCase() === input.symbol.toLowerCase(),
     );
 
     if (duplicated) {
@@ -142,14 +174,14 @@ export async function createAssetFromProvider(
       name: input.name,
       source: "stock",
       category: "stock",
-      currency: input.currency,
+      currency: normalizeCurrency(input.currency),
       metadata: {
         provider: "twelvedata",
         exchange: input.exchange ?? null,
-        projId: null
+        projId: null,
       },
       createdAt: now,
-      updatedAt: now
+      updatedAt: now,
     };
 
     store.assets.push(record);
@@ -161,7 +193,7 @@ export async function createAssetFromProvider(
   const duplicated = store.assets.find(
     (asset) =>
       asset.source === "fund" &&
-      asset.symbol.toLowerCase() === input.symbol.toLowerCase()
+      asset.symbol.toLowerCase() === input.symbol.toLowerCase(),
   );
 
   if (duplicated) {
@@ -174,14 +206,14 @@ export async function createAssetFromProvider(
     name: input.name,
     source: "fund",
     category: "fund",
-    currency: input.currency,
+    currency: normalizeCurrency(input.currency),
     metadata: {
       provider: "sec",
       exchange: null,
-      projId: input.projId
+      projId: input.projId,
     },
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
 
   store.assets.push(record);
@@ -192,7 +224,7 @@ export async function createAssetFromProvider(
 
 export async function updateBinanceAccountSettings(
   accountId: string,
-  input: UpdateBinanceAccountSettingsInput
+  input: UpdateBinanceAccountSettingsInput,
 ): Promise<AccountRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
@@ -204,7 +236,9 @@ export async function updateBinanceAccountSettings(
   }
 
   if (account.source !== "binance") {
-    throw new ValidationError("Only binance accounts can have binance settings");
+    throw new ValidationError(
+      "Only binance accounts can have binance settings",
+    );
   }
 
   account.settings = {
@@ -213,7 +247,7 @@ export async function updateBinanceAccountSettings(
     isTestnet: input.isTestnet,
     permissions: input.permissions,
     label: input.label,
-    lastValidatedAt: null
+    lastValidatedAt: null,
   };
   account.updatedAt = now;
 
@@ -222,7 +256,9 @@ export async function updateBinanceAccountSettings(
   return account;
 }
 
-export async function linkAssetToAccount(input: LinkAssetToAccountInput): Promise<AccountAssetLinkRecord> {
+export async function linkAssetToAccount(
+  input: LinkAssetToAccountInput,
+): Promise<AccountAssetLinkRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
 
@@ -237,7 +273,8 @@ export async function linkAssetToAccount(input: LinkAssetToAccountInput): Promis
   }
 
   const duplicated = store.accountAssetLinks.find(
-    (link) => link.accountId === input.accountId && link.assetId === input.assetId
+    (link) =>
+      link.accountId === input.accountId && link.assetId === input.assetId,
   );
 
   if (duplicated) {
@@ -250,7 +287,7 @@ export async function linkAssetToAccount(input: LinkAssetToAccountInput): Promis
     assetId: input.assetId,
     quantity: input.quantity ?? 1,
     createdAt: now,
-    updatedAt: now
+    updatedAt: now,
   };
 
   store.accountAssetLinks.push(record);
@@ -261,7 +298,7 @@ export async function linkAssetToAccount(input: LinkAssetToAccountInput): Promis
 
 export async function updateAccountAssetLinkQuantity(
   linkId: string,
-  quantity: number
+  quantity: number,
 ): Promise<AccountAssetLinkRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
@@ -299,7 +336,7 @@ export async function unlinkAssetFromAccount(linkId: string): Promise<void> {
 
 export async function updateAccountName(
   accountId: string,
-  name: string
+  name: string,
 ): Promise<AccountRecord> {
   const store = await readStore();
   const now = new Date().toISOString();
@@ -318,7 +355,7 @@ export async function updateAccountName(
   const duplicated = store.accounts.find(
     (item) =>
       item.id !== accountId &&
-      item.name.toLowerCase() === normalizedName.toLowerCase()
+      item.name.toLowerCase() === normalizedName.toLowerCase(),
   );
 
   if (duplicated) {

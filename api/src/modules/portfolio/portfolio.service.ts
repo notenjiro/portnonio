@@ -7,7 +7,9 @@ import type {
   FundDailyHistoryRecord,
   MarketDailyHistoryRecord
 } from "../../storage/history.types";
-import { getFxRateTHBUSD } from "../../services/fx-rate.service";
+import { convertAmount } from "../../services/fx-rate.service";
+
+const BASE_CURRENCY = "THB";
 
 function round(value: number): number {
   return Number(value.toFixed(8));
@@ -52,13 +54,13 @@ function getLastTwoRecords<T>(records: T[]): {
   };
 }
 
-async function getFundUsdUnitValue(record: FundDailyHistoryRecord): Promise<number> {
-  if (record.currency === "THB") {
-    const fx = await getFxRateTHBUSD(record.date);
-    return round(record.nav * fx);
-  }
-
-  return round(record.nav);
+/**
+ * 🔥 TEMP COST BASIS (Phase 1)
+ * ตอนนี้ยังไม่มี order → ใช้ heuristic ไปก่อน
+ */
+function getAvgCostFallback(price: number | null): number | null {
+  if (!price) return null;
+  return price * 0.9; // 👈 สมมติว่าซื้อถูกกว่า 10% (placeholder)
 }
 
 export async function getPortfolioAssets() {
@@ -83,37 +85,92 @@ export async function getPortfolioAssets() {
     let dailyPnl: number | null = null;
     let changePercent: number | null = null;
 
+    let avgCost: number | null = null;
+    let costValue: number | null = null;
+    let unrealizedPnl: number | null = null;
+
+    const qty = link.quantity ?? 1;
+
+    /**
+     * 📈 STOCK
+     */
     if (asset.category === "stock") {
       const records = marketByAsset.get(asset.id) ?? [];
       const { latest, previous } = getLastTwoRecords(records);
 
       if (latest) {
-        price = round(latest.close);
-        value = round(price * (link.quantity ?? 1));
+        const priceTHB = await convertAmount(
+          latest.close,
+          "USD",
+          BASE_CURRENCY,
+          latest.date
+        );
+
+        price = round(priceTHB);
+        value = round(priceTHB * qty);
         lastUpdated = latest.updatedAt;
         changePercent = latest.changePercent ?? null;
 
+        // 🔥 cost basis
+        avgCost = getAvgCostFallback(priceTHB);
+        costValue = avgCost ? round(avgCost * qty) : null;
+        unrealizedPnl =
+          avgCost !== null ? round((priceTHB - avgCost) * qty) : null;
+
         if (previous) {
-          dailyPnl = round((latest.close - previous.close) * (link.quantity ?? 1));
+          const prevPriceTHB = await convertAmount(
+            previous.close,
+            "USD",
+            BASE_CURRENCY,
+            previous.date
+          );
+
+          dailyPnl = round((priceTHB - prevPriceTHB) * qty);
         }
       }
     }
 
+    /**
+     * 💰 FUND
+     */
     if (asset.category === "fund") {
       const records = fundByAsset.get(asset.id) ?? [];
       const { latest, previous } = getLastTwoRecords(records);
 
       if (latest) {
-        const latestUsd = await getFundUsdUnitValue(latest);
+        const priceTHB =
+          latest.currency === BASE_CURRENCY
+            ? latest.nav
+            : await convertAmount(
+                latest.nav,
+                latest.currency,
+                BASE_CURRENCY,
+                latest.date
+              );
 
-        price = latestUsd;
-        value = round(latestUsd * (link.quantity ?? 1));
+        price = round(priceTHB);
+        value = round(priceTHB * qty);
         lastUpdated = latest.updatedAt;
         changePercent = latest.changePercent ?? null;
 
+        // 🔥 cost basis
+        avgCost = getAvgCostFallback(priceTHB);
+        costValue = avgCost ? round(avgCost * qty) : null;
+        unrealizedPnl =
+          avgCost !== null ? round((priceTHB - avgCost) * qty) : null;
+
         if (previous) {
-          const previousUsd = await getFundUsdUnitValue(previous);
-          dailyPnl = round((latestUsd - previousUsd) * (link.quantity ?? 1));
+          const prevPriceTHB =
+            previous.currency === BASE_CURRENCY
+              ? previous.nav
+              : await convertAmount(
+                  previous.nav,
+                  previous.currency,
+                  BASE_CURRENCY,
+                  previous.date
+                );
+
+          dailyPnl = round((priceTHB - prevPriceTHB) * qty);
         }
       }
     }
@@ -124,12 +181,22 @@ export async function getPortfolioAssets() {
       symbol: asset.symbol,
       name: asset.name,
       category: asset.category,
-      quantity: link.quantity ?? 1,
+      quantity: qty,
+
       price,
       value,
+
+      // 🔥 NEW (สำคัญ)
+      avgCost,
+      costValue,
+      unrealizedPnl,
+
+      // เดิม
       dailyPnl,
       changePercent,
       lastUpdated,
+
+      currency: BASE_CURRENCY,
     });
   }
 

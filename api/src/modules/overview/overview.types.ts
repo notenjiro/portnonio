@@ -1,17 +1,22 @@
 export interface OverviewResponse {
   asOf: string | null;
+
+  baseCurrency: string; // 👈 เพิ่ม (สำคัญสุด)
+
   totals: {
-    totalTrackedUsd: number;
-    binanceTrackedUsd: number;
-    stockTrackedUsd: number;
-    fundTrackedUsd: number;
-    cashTrackedUsd: number;
+    totalTrackedValue: number;
+    binanceTrackedValue: number;
+    stockTrackedValue: number;
+    fundTrackedValue: number;
+    cashTrackedValue: number;
   };
+
   binance: {
-    spotValueUsd: number;
-    futuresNotionalUsd: number;
+    spotValue: number;
+    futuresNotional: number;
     futuresUnrealizedPnl: number;
   };
+
   calendar: {
     totalPnl: number;
     averagePnl: number | null;

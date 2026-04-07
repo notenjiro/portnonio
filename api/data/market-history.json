@@ -64,5 +64,71 @@
     "source": "twelvedata",
     "createdAt": "2026-04-04T00:00:13.461Z",
     "updatedAt": "2026-04-04T00:07:13.681Z"
+  },
+  {
+    "date": "2026-04-05",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+    "symbol": "AAPL",
+    "close": 255.92,
+    "currency": "USD",
+    "changePercent": 0.11344259,
+    "source": "twelvedata",
+    "createdAt": "2026-04-05T00:00:19.858Z",
+    "updatedAt": "2026-04-05T06:39:20.580Z"
+  },
+  {
+    "date": "2026-04-05",
+    "assetId": "c4888c36-f3d5-4d1d-bc7e-7508e5add160",
+    "symbol": "MSFT",
+    "close": 373.45999,
+    "currency": "USD",
+    "changePercent": 1.10729,
+    "source": "twelvedata",
+    "createdAt": "2026-04-05T00:00:20.365Z",
+    "updatedAt": "2026-04-05T06:39:21.093Z"
+  },
+  {
+    "date": "2026-04-06",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+    "symbol": "AAPL",
+    "close": 255.92,
+    "currency": "USD",
+    "changePercent": 0.11344259,
+    "source": "twelvedata",
+    "createdAt": "2026-04-06T00:00:23.385Z",
+    "updatedAt": "2026-04-06T06:39:23.499Z"
+  },
+  {
+    "date": "2026-04-06",
+    "assetId": "c4888c36-f3d5-4d1d-bc7e-7508e5add160",
+    "symbol": "MSFT",
+    "close": 373.45999,
+    "currency": "USD",
+    "changePercent": 1.10729,
+    "source": "twelvedata",
+    "createdAt": "2026-04-06T00:00:23.910Z",
+    "updatedAt": "2026-04-06T06:39:23.991Z"
+  },
+  {
+    "date": "2026-04-07",
+    "assetId": "9fce3b8c-a89e-4219-96d7-aa0fa4ee4d19",
+    "symbol": "AAPL",
+    "close": 258.85999,
+    "currency": "USD",
+    "changePercent": 1.14879,
+    "source": "twelvedata",
+    "createdAt": "2026-04-07T00:00:24.005Z",
+    "updatedAt": "2026-04-07T06:33:33.482Z"
+  },
+  {
+    "date": "2026-04-07",
+    "assetId": "c4888c36-f3d5-4d1d-bc7e-7508e5add160",
+    "symbol": "MSFT",
+    "close": 372.88,
+    "currency": "USD",
+    "changePercent": -0.15530086,
+    "source": "twelvedata",
+    "createdAt": "2026-04-07T00:00:24.515Z",
+    "updatedAt": "2026-04-07T06:33:33.857Z"
   }
 ]

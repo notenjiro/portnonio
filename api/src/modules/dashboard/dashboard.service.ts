@@ -20,36 +20,37 @@ function roundNumber(value: number): number {
 
 function buildSummaryCards(
   latestBinancePortfolio: AggregatedBinancePortfolioResponse | null,
-  stockTrackedUsd: number,
-  fundTrackedUsd: number,
-  cashTrackedUsd: number
+  stockTrackedValue: number,
+  fundTrackedValue: number,
+  cashTrackedValue: number,
+  baseCurrency: string
 ): DashboardSummaryCard[] {
-  const liveSpotValueUsd = latestBinancePortfolio?.spot.totalValueUsd ?? 0;
-  const liveFuturesNotionalUsd = latestBinancePortfolio?.futures.totalNotionalUsd ?? 0;
+  const liveSpotValue = latestBinancePortfolio?.spot.totalValue ?? 0;
+  const liveFuturesNotional = latestBinancePortfolio?.futures.totalNotional ?? 0;
   const liveOpenFuturesPositions = latestBinancePortfolio?.futures.positionCount ?? 0;
 
-  const totalTrackedUsd = roundNumber(
-    liveSpotValueUsd + liveFuturesNotionalUsd + stockTrackedUsd + fundTrackedUsd + cashTrackedUsd
+  const totalTracked = roundNumber(
+    liveSpotValue + liveFuturesNotional + stockTrackedValue + fundTrackedValue + cashTrackedValue
   );
 
   return [
     {
-      key: "totalTrackedUsd",
+      key: "totalTrackedValue",
       label: "Total Tracked",
-      value: totalTrackedUsd,
-      unit: "USD"
+      value: totalTracked,
+      unit: baseCurrency as "THB"
     },
     {
-      key: "spotValueUsd",
+      key: "spotValue",
       label: "Spot Value",
-      value: liveSpotValueUsd,
-      unit: "USD"
+      value: liveSpotValue,
+      unit: baseCurrency as "THB"
     },
     {
-      key: "futuresNotionalUsd",
+      key: "futuresNotional",
       label: "Futures Notional",
-      value: liveFuturesNotionalUsd,
-      unit: "USD"
+      value: liveFuturesNotional,
+      unit: baseCurrency as "THB"
     },
     {
       key: "openFuturesPositions",
@@ -68,9 +69,9 @@ function buildRiskSection(
   }
 
   return {
-    futuresUnrealizedPnlUsd: latestBinancePortfolio.futures.totalUnrealizedPnl,
-    futuresNotionalUsd: latestBinancePortfolio.futures.totalNotionalUsd,
-    spotValueUsd: latestBinancePortfolio.spot.totalValueUsd,
+    futuresUnrealizedPnl: latestBinancePortfolio.futures.totalUnrealizedPnl,
+    futuresNotional: latestBinancePortfolio.futures.totalNotional,
+    spotValue: latestBinancePortfolio.spot.totalValue,
     pricedSpotCount: latestBinancePortfolio.spot.pricedCount,
     unpricedSpotCount: latestBinancePortfolio.spot.unpricedCount,
     openFuturesPositions: latestBinancePortfolio.futures.positionCount
@@ -79,37 +80,37 @@ function buildRiskSection(
 
 function buildAllocation(
   latestBinancePortfolio: AggregatedBinancePortfolioResponse | null,
-  stockTrackedUsd: number,
-  fundTrackedUsd: number
+  stockTrackedValue: number,
+  fundTrackedValue: number
 ): DashboardAllocationItem[] {
   const items = [
     {
       key: "binanceSpot",
       label: "Binance Spot",
-      valueUsd: latestBinancePortfolio?.spot.totalValueUsd ?? 0
+      value: latestBinancePortfolio?.spot.totalValue ?? 0
     },
     {
       key: "binanceFutures",
       label: "Binance Futures",
-      valueUsd: latestBinancePortfolio?.futures.totalNotionalUsd ?? 0
+      value: latestBinancePortfolio?.futures.totalNotional ?? 0
     },
     {
       key: "stocks",
       label: "Stocks",
-      valueUsd: stockTrackedUsd
+      value: stockTrackedValue
     },
     {
       key: "funds",
       label: "Funds",
-      valueUsd: fundTrackedUsd
+      value: fundTrackedValue
     }
   ];
 
-  const total = items.reduce((sum, item) => sum + item.valueUsd, 0);
+  const total = items.reduce((sum, item) => sum + item.value, 0);
 
   return items.map((item) => ({
     ...item,
-    weight: total > 0 ? roundNumber(item.valueUsd / total) : 0
+    weight: total > 0 ? roundNumber(item.value / total) : 0
   }));
 }
 
@@ -146,7 +147,7 @@ async function getAggregatedBinancePortfolio(): Promise<AggregatedBinancePortfol
     accountCount: portfolios.length,
     spot: {
       holdings: spotHoldings,
-      totalValueUsd: roundNumber(
+      totalValue: roundNumber(
         portfolios.reduce((sum, portfolio) => sum + portfolio.spot.totalValueUsd, 0)
       ),
       pricedCount: portfolios.reduce((sum, portfolio) => sum + portfolio.spot.pricedCount, 0),
@@ -154,7 +155,7 @@ async function getAggregatedBinancePortfolio(): Promise<AggregatedBinancePortfol
     },
     futures: {
       positions: futuresPositions,
-      totalNotionalUsd: roundNumber(
+      totalNotional: roundNumber(
         portfolios.reduce((sum, portfolio) => sum + portfolio.futures.totalNotionalUsd, 0)
       ),
       totalUnrealizedPnl: roundNumber(
@@ -174,16 +175,18 @@ export async function getDashboardData(): Promise<DashboardResponse> {
 
   const summaryCards = buildSummaryCards(
     latestBinancePortfolio,
-    overview.totals.stockTrackedUsd,
-    overview.totals.fundTrackedUsd,
-    overview.totals.cashTrackedUsd
+    overview.totals.stockTrackedValue,
+    overview.totals.fundTrackedValue,
+    overview.totals.cashTrackedValue,
+    overview.baseCurrency
   );
 
   const risk = buildRiskSection(latestBinancePortfolio);
+
   const allocation = buildAllocation(
     latestBinancePortfolio,
-    overview.totals.stockTrackedUsd,
-    overview.totals.fundTrackedUsd
+    overview.totals.stockTrackedValue,
+    overview.totals.fundTrackedValue
   );
 
   return {

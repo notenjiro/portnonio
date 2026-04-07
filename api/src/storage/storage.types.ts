@@ -1,6 +1,8 @@
 export type AccountSource = "binance" | "stock" | "fund";
 export type AssetCategory = "crypto" | "stock" | "fund";
 
+export type Currency = "USD" | "THB"; // 👈 เพิ่ม
+
 export interface BinanceAccountSettings {
   apiKey: string;
   apiSecret: string;
@@ -15,6 +17,9 @@ export interface AccountRecord {
   name: string;
   source: AccountSource;
   provider: string;
+
+  baseCurrency: Currency; // 👈 เพิ่ม (สำคัญมาก)
+
   settings: BinanceAccountSettings | null;
   createdAt: string;
   updatedAt: string;
@@ -32,7 +37,9 @@ export interface AssetRecord {
   name: string;
   source: AccountSource;
   category: AssetCategory;
-  currency: string;
+
+  currency: Currency; // 👈 tighten type
+
   metadata: AssetMetadata | null;
   createdAt: string;
   updatedAt: string;
@@ -49,7 +56,9 @@ export interface AccountAssetLinkRecord {
 
 export interface StoreData {
   version: 1;
-  baseCurrency: "USD";
+
+  baseCurrency: Currency; // 👈 เปลี่ยนจาก fix เป็น dynamic
+
   accounts: AccountRecord[];
   assets: AssetRecord[];
   accountAssetLinks: AccountAssetLinkRecord[];
