@@ -8,7 +8,7 @@
       "source": "binance",
       "provider": "binance",
       "createdAt": "2026-04-01T07:09:58.432Z",
-      "updatedAt": "2026-04-07T06:28:16.858Z",
+      "updatedAt": "2026-04-07T07:30:48.205Z",
       "settings": {
         "apiKey": "MmQeN1chazBHZIwZssd7MMuemsGQBY67MpV0iYb4iPdUVECKd85JAJmEQ6uuOAvj",
         "apiSecret": "jved4PEma1ZqlvkbUXSZ8dhrkw09o3FdgMuvAl8zvG9qrzTI5yofvuMbSh6IWCXs",
@@ -18,7 +18,7 @@
           "futures"
         ],
         "label": "main-account",
-        "lastValidatedAt": "2026-04-07T06:28:16.858Z"
+        "lastValidatedAt": "2026-04-07T07:30:48.205Z"
       }
     }
   ],

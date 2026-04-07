@@ -11,6 +11,7 @@ import type {
   AssetRecord,
   StoreData,
   AccountSource,
+  TransactionRecord,
 } from "../../storage/storage.types";
 import type {
   CreateAccountInput,
@@ -18,7 +19,15 @@ import type {
   CreateAssetFromProviderInput,
   LinkAssetToAccountInput,
   UpdateBinanceAccountSettingsInput,
+  CreateTransactionInput,
+  UpdateTransactionInput,
 } from "./store.schemas";
+
+/**
+ * -----------------------------
+ * HELPERS
+ * -----------------------------
+ */
 
 function normalizeCurrency(value: string): "USD" | "THB" {
   const upper = value.toUpperCase();
@@ -30,6 +39,21 @@ function normalizeCurrency(value: string): "USD" | "THB" {
   throw new ValidationError(`Unsupported currency: ${value}`);
 }
 
+function nowIso() {
+  return new Date().toISOString();
+}
+
+function getDefaultAccountCurrency(source: AccountSource): "USD" | "THB" {
+  if (source === "binance") return "USD";
+  return "THB";
+}
+
+/**
+ * -----------------------------
+ * STORE CORE
+ * -----------------------------
+ */
+
 export async function getStore(): Promise<StoreData> {
   return readStore();
 }
@@ -40,14 +64,18 @@ export async function bootstrapStore(): Promise<StoreData> {
   return defaultStore;
 }
 
+/**
+ * -----------------------------
+ * ACCOUNT / ASSET
+ * -----------------------------
+ */
+
 export async function listAccounts(
   source?: AccountSource,
 ): Promise<AccountRecord[]> {
   const store = await readStore();
 
-  if (!source) {
-    return store.accounts;
-  }
+  if (!source) return store.accounts;
 
   return store.accounts.filter((account) => account.source === source);
 }
@@ -57,9 +85,7 @@ export async function listAssets(
 ): Promise<AssetRecord[]> {
   const store = await readStore();
 
-  if (!source) {
-    return store.assets;
-  }
+  if (!source) return store.assets;
 
   return store.assets.filter((asset) => asset.source === source);
 }
@@ -69,18 +95,22 @@ export async function listAccountAssetLinks(
 ): Promise<AccountAssetLinkRecord[]> {
   const store = await readStore();
 
-  if (!accountId) {
-    return store.accountAssetLinks;
-  }
+  if (!accountId) return store.accountAssetLinks;
 
   return store.accountAssetLinks.filter((link) => link.accountId === accountId);
 }
+
+/**
+ * -----------------------------
+ * ACCOUNT CREATE
+ * -----------------------------
+ */
 
 export async function createAccount(
   input: CreateAccountInput,
 ): Promise<AccountRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const duplicated = store.accounts.find(
     (account) =>
@@ -93,19 +123,12 @@ export async function createAccount(
     throw new ValidationError("Account already exists");
   }
 
-  function getDefaultAccountCurrency(source: AccountSource): "USD" | "THB" {
-    if (source === "binance") return "USD";
-    return "THB";
-  }
-
   const record: AccountRecord = {
     id: randomUUID(),
     name: input.name,
     source: input.source,
     provider: input.provider,
-
     baseCurrency: getDefaultAccountCurrency(input.source),
-
     settings: null,
     createdAt: now,
     updatedAt: now,
@@ -117,11 +140,17 @@ export async function createAccount(
   return record;
 }
 
+/**
+ * -----------------------------
+ * ASSET CREATE
+ * -----------------------------
+ */
+
 export async function createAsset(
   input: CreateAssetInput,
 ): Promise<AssetRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const duplicated = store.assets.find(
     (asset) =>
@@ -155,7 +184,7 @@ export async function createAssetFromProvider(
   input: CreateAssetFromProviderInput,
 ): Promise<AssetRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   if (input.provider === "twelvedata") {
     const duplicated = store.assets.find(
@@ -222,12 +251,18 @@ export async function createAssetFromProvider(
   return record;
 }
 
+/**
+ * -----------------------------
+ * EXISTING ACCOUNT SETTINGS / LINKS
+ * -----------------------------
+ */
+
 export async function updateBinanceAccountSettings(
   accountId: string,
   input: UpdateBinanceAccountSettingsInput,
 ): Promise<AccountRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const account = store.accounts.find((item) => item.id === accountId);
 
@@ -260,7 +295,7 @@ export async function linkAssetToAccount(
   input: LinkAssetToAccountInput,
 ): Promise<AccountAssetLinkRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const account = store.accounts.find((item) => item.id === input.accountId);
   if (!account) {
@@ -301,7 +336,7 @@ export async function updateAccountAssetLinkQuantity(
   quantity: number,
 ): Promise<AccountAssetLinkRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
 
   const link = store.accountAssetLinks.find((l) => l.id === linkId);
   if (!link) {
@@ -339,7 +374,7 @@ export async function updateAccountName(
   name: string,
 ): Promise<AccountRecord> {
   const store = await readStore();
-  const now = new Date().toISOString();
+  const now = nowIso();
   const normalizedName = name.trim();
 
   if (!normalizedName) {
@@ -368,4 +403,109 @@ export async function updateAccountName(
   await writeStore(store);
 
   return account;
+}
+
+/**
+ * -----------------------------
+ * TRANSACTION CORE
+ * -----------------------------
+ */
+
+export async function listTransactions(accountId?: string) {
+  const store = await readStore();
+
+  if (!accountId) return store.transactions ?? [];
+
+  return (store.transactions ?? []).filter(
+    (t) => t.accountId === accountId
+  );
+}
+
+export async function createTransaction(
+  input: CreateTransactionInput
+): Promise<TransactionRecord> {
+  const store = await readStore();
+  const now = nowIso();
+
+  const account = store.accounts.find((a) => a.id === input.accountId);
+  if (!account) throw new NotFoundError("Account not found");
+
+  const asset = store.assets.find((a) => a.id === input.assetId);
+  if (!asset) throw new NotFoundError("Asset not found");
+
+  const record: TransactionRecord = {
+    id: randomUUID(),
+    accountId: input.accountId,
+    assetId: input.assetId,
+    side: input.side,
+    quantity: input.quantity,
+    price: input.price,
+    currency: normalizeCurrency(input.currency),
+    fee: input.fee ?? 0,
+    feeCurrency: input.feeCurrency
+      ? normalizeCurrency(input.feeCurrency)
+      : normalizeCurrency(input.currency),
+    executedAt: input.executedAt,
+    source: "manual",
+    createdAt: now,
+    updatedAt: now,
+  };
+
+  store.transactions = [...(store.transactions ?? []), record];
+
+  await writeStore(store);
+
+  return record;
+}
+
+export async function updateTransaction(
+  input: UpdateTransactionInput
+): Promise<TransactionRecord> {
+  const store = await readStore();
+  const now = nowIso();
+
+  const tx = (store.transactions ?? []).find((t) => t.id === input.id);
+  if (!tx) throw new NotFoundError("Transaction not found");
+
+  if (tx.source === "binance") {
+    throw new ValidationError("Cannot modify binance transaction");
+  }
+
+  if (input.side) tx.side = input.side;
+  if (input.quantity) tx.quantity = input.quantity;
+  if (input.price) tx.price = input.price;
+
+  if (input.currency) tx.currency = normalizeCurrency(input.currency);
+
+  if (input.fee !== undefined) tx.fee = input.fee;
+  if (input.feeCurrency) tx.feeCurrency = normalizeCurrency(input.feeCurrency);
+
+  if (input.executedAt) tx.executedAt = input.executedAt;
+
+  tx.updatedAt = now;
+
+  await writeStore(store);
+
+  return tx;
+}
+
+export async function deleteTransaction(id: string): Promise<void> {
+  const store = await readStore();
+
+  const index = (store.transactions ?? []).findIndex((t) => t.id === id);
+
+  if (index === -1) throw new NotFoundError("Transaction not found");
+
+  const tx = store.transactions[index];
+  if (!tx) {
+    throw new NotFoundError("Transaction not found");
+  }
+
+  if (tx.source === "binance") {
+    throw new ValidationError("Cannot delete binance transaction");
+  }
+
+  store.transactions.splice(index, 1);
+
+  await writeStore(store);
 }

@@ -1,7 +1,7 @@
 import {
   readBinanceHistory,
-  readMarketHistory,
   readFundHistory,
+  readMarketHistory,
   writePortfolioCalendar,
   writePortfolioSnapshots,
 } from "../../storage/history.repository";
@@ -15,8 +15,6 @@ import type {
   PortfolioCalendarDayRecord,
   PortfolioSnapshotRecord,
 } from "../../storage/history.types";
-
-import type { AccountAssetLinkRecord } from "../../storage/storage.types";
 
 import { getFxRateTHBUSD } from "../../services/fx-rate.service";
 
@@ -37,130 +35,66 @@ interface AggregatedBinanceDay {
   createdAt: string;
 }
 
-function buildQuantityByAsset(
-  links: AccountAssetLinkRecord[],
-): Map<string, number> {
-  const quantityByAsset = new Map<string, number>();
-
-  for (const link of links) {
-    quantityByAsset.set(link.assetId, link.quantity ?? 1);
-  }
-
-  return quantityByAsset;
+interface TransactionState {
+  quantity: number;
+  openCostUsd: number;
+  realizedPnlUsd: number;
 }
 
-function buildStockDailyPnlMap(
-  marketHistory: MarketDailyHistoryRecord[],
-  quantityByAsset: Map<string, number>,
-): Map<string, number> {
-  const byAsset = new Map<string, MarketDailyHistoryRecord[]>();
-
-  for (const record of marketHistory) {
-    if (!quantityByAsset.has(record.assetId)) {
-      continue;
-    }
-
-    const list = byAsset.get(record.assetId) ?? [];
-    list.push(record);
-    byAsset.set(record.assetId, list);
-  }
-
-  const stockPnlByDate = new Map<string, number>();
-
-  for (const records of byAsset.values()) {
-    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
-
-    for (let i = 1; i < sorted.length; i += 1) {
-      const previous = sorted[i - 1];
-      const current = sorted[i];
-
-      if (!previous || !current) {
-        continue;
-      }
-
-      const quantity = quantityByAsset.get(current.assetId);
-
-      if (quantity === undefined) {
-        continue;
-      }
-
-      const delta = roundNumber((current.close - previous.close) * quantity);
-
-      stockPnlByDate.set(
-        current.date,
-        roundNumber((stockPnlByDate.get(current.date) ?? 0) + delta),
-      );
-    }
-  }
-
-  return stockPnlByDate;
+interface RebuildBreakdown {
+  totalDays: number;
+  winningDays: number;
+  losingDays: number;
+  flatDays: number;
+  winRate: number | null;
+  maxDrawdown: {
+    amountUsd: number;
+    percent: number;
+    peakDate: string | null;
+    troughDate: string | null;
+  };
+  cumulativeEquityCurve: Array<{
+    date: string;
+    totalValueUsd: number;
+    cumulativePnlUsd: number;
+  }>;
 }
 
-async function buildFundDailyPnlMap(
-  fundHistory: FundDailyHistoryRecord[],
-  quantityByAsset: Map<string, number>,
-): Promise<Map<string, number>> {
-  const byAsset = new Map<string, FundDailyHistoryRecord[]>();
+function buildInitialTransactionStateMap(store: any): Map<string, TransactionState> {
+  const map = new Map<string, TransactionState>();
 
-  for (const record of fundHistory) {
-    if (!quantityByAsset.has(record.assetId)) {
-      continue;
-    }
-
-    const list = byAsset.get(record.assetId) ?? [];
-    list.push(record);
-    byAsset.set(record.assetId, list);
+  for (const asset of store.assets ?? []) {
+    map.set(asset.id, {
+      quantity: 0,
+      openCostUsd: 0,
+      realizedPnlUsd: 0,
+    });
   }
 
-  const fxRateCache = new Map<string, number>();
-  const fundPnlByDate = new Map<string, number>();
+  return map;
+}
 
-  async function getUsdValue(record: FundDailyHistoryRecord): Promise<number> {
-    const quantity = quantityByAsset.get(record.assetId);
-
-    if (quantity === undefined) {
-      return 0;
-    }
-
-    let unitValueUsd = record.nav;
-
-    if (record.currency === "THB") {
-      let rate = fxRateCache.get(record.date);
-
-      if (rate === undefined) {
-        rate = await getFxRateTHBUSD(record.date);
-        fxRateCache.set(record.date, rate);
-      }
-
-      unitValueUsd = record.nav * rate;
-    }
-
-    return roundNumber(unitValueUsd * quantity);
+async function convertAmountToUsd(
+  amount: number,
+  currency: string,
+  date: string,
+): Promise<number> {
+  if (!Number.isFinite(amount) || amount === 0) {
+    return 0;
   }
 
-  for (const records of byAsset.values()) {
-    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
+  const normalizedCurrency = String(currency ?? "USD").toUpperCase();
 
-    for (let i = 1; i < sorted.length; i += 1) {
-      const previous = sorted[i - 1];
-      const current = sorted[i];
-
-      if (!previous || !current) {
-        continue;
-      }
-
-      const previousUsd = await getUsdValue(previous);
-      const currentUsd = await getUsdValue(current);
-      const delta = roundNumber(currentUsd - previousUsd);
-
-      fundPnlByDate.set(
-        current.date,
-        roundNumber((fundPnlByDate.get(current.date) ?? 0) + delta),
-      );
-    }
+  if (normalizedCurrency === "USD") {
+    return roundNumber(amount);
   }
 
-  return fundPnlByDate;
+  if (normalizedCurrency === "THB") {
+    const rate = await getFxRateTHBUSD(date);
+    return roundNumber(amount * rate);
+  }
+
+  return roundNumber(amount);
 }
 
 function aggregateBinanceHistoryByDate(
@@ -219,10 +153,195 @@ function aggregateBinanceHistoryByDate(
   return byDate;
 }
 
+function buildTransactionDates(store: any): string[] {
+  const dates = new Set<string>();
+
+  for (const tx of store.transactions ?? []) {
+    if (typeof tx.executedAt === "string" && tx.executedAt.length >= 10) {
+      dates.add(tx.executedAt.slice(0, 10));
+    }
+  }
+
+  return [...dates].sort((a, b) => a.localeCompare(b));
+}
+
+function buildMarketHistoryByAsset(
+  marketHistory: MarketDailyHistoryRecord[],
+): Map<string, MarketDailyHistoryRecord[]> {
+  const byAsset = new Map<string, MarketDailyHistoryRecord[]>();
+
+  for (const record of marketHistory) {
+    const list = byAsset.get(record.assetId) ?? [];
+    list.push(record);
+    byAsset.set(record.assetId, list);
+  }
+
+  for (const [assetId, list] of byAsset.entries()) {
+    byAsset.set(
+      assetId,
+      [...list].sort((a, b) => a.date.localeCompare(b.date)),
+    );
+  }
+
+  return byAsset;
+}
+
+function buildFundHistoryByAsset(
+  fundHistory: FundDailyHistoryRecord[],
+): Map<string, FundDailyHistoryRecord[]> {
+  const byAsset = new Map<string, FundDailyHistoryRecord[]>();
+
+  for (const record of fundHistory) {
+    const list = byAsset.get(record.assetId) ?? [];
+    list.push(record);
+    byAsset.set(record.assetId, list);
+  }
+
+  for (const [assetId, list] of byAsset.entries()) {
+    byAsset.set(
+      assetId,
+      [...list].sort((a, b) => a.date.localeCompare(b.date)),
+    );
+  }
+
+  return byAsset;
+}
+
+async function getLatestStockUnitPriceUsdOnOrBeforeDate(
+  records: MarketDailyHistoryRecord[],
+  date: string,
+): Promise<number> {
+  let latest: MarketDailyHistoryRecord | null = null;
+
+  for (const record of records) {
+    if (record.date <= date) {
+      latest = record;
+    } else {
+      break;
+    }
+  }
+
+  if (!latest) {
+    return 0;
+  }
+
+  return roundNumber(latest.close);
+}
+
+async function getLatestFundUnitPriceUsdOnOrBeforeDate(
+  records: FundDailyHistoryRecord[],
+  date: string,
+): Promise<number> {
+  let latest: FundDailyHistoryRecord | null = null;
+
+  for (const record of records) {
+    if (record.date <= date) {
+      latest = record;
+    } else {
+      break;
+    }
+  }
+
+  if (!latest) {
+    return 0;
+  }
+
+  if (String(latest.currency).toUpperCase() === "THB") {
+    const rate = await getFxRateTHBUSD(latest.date);
+    return roundNumber(latest.nav * rate);
+  }
+
+  return roundNumber(latest.nav);
+}
+
+async function applyTransactionsUpToDate(
+  transactions: any[],
+  date: string,
+  stateByAsset: Map<string, TransactionState>,
+): Promise<void> {
+  for (const tx of transactions) {
+    const txDate = String(tx.executedAt ?? "").slice(0, 10);
+
+    if (txDate !== date) {
+      continue;
+    }
+
+    const assetId = tx.assetId;
+    const currentState = stateByAsset.get(assetId) ?? {
+      quantity: 0,
+      openCostUsd: 0,
+      realizedPnlUsd: 0,
+    };
+
+    const quantity = Number(tx.quantity ?? 0);
+    const priceUsd = await convertAmountToUsd(
+      Number(tx.price ?? 0),
+      tx.currency,
+      txDate,
+    );
+
+    const feeUsd = await convertAmountToUsd(
+      Number(tx.fee ?? 0),
+      tx.feeCurrency ?? tx.currency,
+      txDate,
+    );
+
+    if (!Number.isFinite(quantity) || quantity <= 0) {
+      stateByAsset.set(assetId, currentState);
+      continue;
+    }
+
+    if (tx.side === "buy") {
+      currentState.quantity = roundNumber(currentState.quantity + quantity);
+      currentState.openCostUsd = roundNumber(
+        currentState.openCostUsd + (priceUsd * quantity) + feeUsd,
+      );
+      stateByAsset.set(assetId, currentState);
+      continue;
+    }
+
+    if (tx.side === "sell") {
+      if (currentState.quantity <= 0) {
+        stateByAsset.set(assetId, currentState);
+        continue;
+      }
+
+      const sellQty = Math.min(quantity, currentState.quantity);
+      const avgCostUsd =
+        currentState.quantity > 0
+          ? currentState.openCostUsd / currentState.quantity
+          : 0;
+
+      const proceedsUsd = (priceUsd * sellQty) - feeUsd;
+      const costRemovedUsd = avgCostUsd * sellQty;
+      const realizedUsd = proceedsUsd - costRemovedUsd;
+
+      currentState.realizedPnlUsd = roundNumber(
+        currentState.realizedPnlUsd + realizedUsd,
+      );
+      currentState.quantity = roundNumber(currentState.quantity - sellQty);
+      currentState.openCostUsd = roundNumber(
+        currentState.openCostUsd - costRemovedUsd,
+      );
+
+      if (currentState.quantity <= 0.00000001) {
+        currentState.quantity = 0;
+        currentState.openCostUsd = 0;
+      }
+
+      stateByAsset.set(assetId, currentState);
+      continue;
+    }
+
+    stateByAsset.set(assetId, currentState);
+  }
+}
+
 function getAllCalendarDates(
   aggregatedBinanceByDate: Map<string, AggregatedBinanceDay>,
-  stockPnlByDate: Map<string, number>,
-  fundPnlByDate: Map<string, number>,
+  marketHistory: MarketDailyHistoryRecord[],
+  fundHistory: FundDailyHistoryRecord[],
+  transactionDates: string[],
 ): string[] {
   const allDates = new Set<string>();
 
@@ -230,141 +349,95 @@ function getAllCalendarDates(
     allDates.add(date);
   }
 
-  for (const date of stockPnlByDate.keys()) {
-    allDates.add(date);
+  for (const record of marketHistory) {
+    allDates.add(record.date);
   }
 
-  for (const date of fundPnlByDate.keys()) {
+  for (const record of fundHistory) {
+    allDates.add(record.date);
+  }
+
+  for (const date of transactionDates) {
     allDates.add(date);
   }
 
   return [...allDates].sort((a, b) => a.localeCompare(b));
 }
 
-function buildStockDailyValueMap(
-  marketHistory: MarketDailyHistoryRecord[],
-  quantityByAsset: Map<string, number>,
-  calendarDates: string[],
-): Map<string, number> {
-  const byAsset = new Map<string, MarketDailyHistoryRecord[]>();
+function buildBreakdown(
+  calendar: PortfolioCalendarDayRecord[],
+  snapshots: PortfolioSnapshotRecord[],
+): RebuildBreakdown {
+  const winningDays = calendar.filter((day) => (day.totalPnl ?? 0) > 0).length;
+  const losingDays = calendar.filter((day) => (day.totalPnl ?? 0) < 0).length;
+  const flatDays = calendar.filter((day) => (day.totalPnl ?? 0) === 0).length;
 
-  for (const record of marketHistory) {
-    if (!quantityByAsset.has(record.assetId)) {
-      continue;
+  const winRate =
+    winningDays + losingDays > 0
+      ? roundNumber(winningDays / (winningDays + losingDays))
+      : null;
+
+  let peakValue = Number.NEGATIVE_INFINITY;
+  let peakDate: string | null = null;
+  let troughDate: string | null = null;
+  let maxDrawdownAmount = 0;
+  let maxDrawdownPercent = 0;
+  let cumulativePnl = 0;
+
+  const cumulativeEquityCurve = calendar.map((day) => {
+    cumulativePnl = roundNumber(cumulativePnl + (day.totalPnl ?? 0));
+
+    const snapshot = snapshots.find((item) => item.date === day.date);
+    const totalValueUsd = roundNumber(snapshot?.totalValueUsd ?? 0);
+
+    if (totalValueUsd > peakValue) {
+      peakValue = totalValueUsd;
+      peakDate = day.date;
     }
 
-    const list = byAsset.get(record.assetId) ?? [];
-    list.push(record);
-    byAsset.set(record.assetId, list);
-  }
+    const drawdownAmount =
+      peakValue !== Number.NEGATIVE_INFINITY
+        ? roundNumber(peakValue - totalValueUsd)
+        : 0;
 
-  const stockValueByDate = new Map<string, number>();
+    const drawdownPercent =
+      peakValue > 0
+        ? roundNumber(drawdownAmount / peakValue)
+        : 0;
 
-  for (const records of byAsset.values()) {
-    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
-    let pointer = 0;
-    let latestValue = 0;
-
-    for (const date of calendarDates) {
-      while (pointer < sorted.length) {
-        const record = sorted[pointer];
-
-        if (!record || record.date > date) {
-          break;
-        }
-
-        const quantity = quantityByAsset.get(record.assetId);
-
-        if (quantity !== undefined) {
-          latestValue = roundNumber(record.close * quantity);
-        }
-
-        pointer += 1;
-      }
-
-      stockValueByDate.set(
-        date,
-        roundNumber((stockValueByDate.get(date) ?? 0) + latestValue),
-      );
-    }
-  }
-
-  return stockValueByDate;
-}
-
-async function buildFundDailyValueMap(
-  fundHistory: FundDailyHistoryRecord[],
-  quantityByAsset: Map<string, number>,
-  calendarDates: string[],
-): Promise<Map<string, number>> {
-  const byAsset = new Map<string, FundDailyHistoryRecord[]>();
-
-  for (const record of fundHistory) {
-    if (!quantityByAsset.has(record.assetId)) {
-      continue;
+    if (drawdownAmount > maxDrawdownAmount) {
+      maxDrawdownAmount = drawdownAmount;
+      maxDrawdownPercent = drawdownPercent;
+      troughDate = day.date;
     }
 
-    const list = byAsset.get(record.assetId) ?? [];
-    list.push(record);
-    byAsset.set(record.assetId, list);
-  }
+    return {
+      date: day.date,
+      totalValueUsd,
+      cumulativePnlUsd: cumulativePnl,
+    };
+  });
 
-  const fxRateCache = new Map<string, number>();
-  const fundValueByDate = new Map<string, number>();
-
-  async function getUsdValue(record: FundDailyHistoryRecord): Promise<number> {
-    const quantity = quantityByAsset.get(record.assetId);
-
-    if (quantity === undefined) {
-      return 0;
-    }
-
-    let unitValueUsd = record.nav;
-
-    if (record.currency === "THB") {
-      let rate = fxRateCache.get(record.date);
-
-      if (rate === undefined) {
-        rate = await getFxRateTHBUSD(record.date);
-        fxRateCache.set(record.date, rate);
-      }
-
-      unitValueUsd = record.nav * rate;
-    }
-
-    return roundNumber(unitValueUsd * quantity);
-  }
-
-  for (const records of byAsset.values()) {
-    const sorted = [...records].sort((a, b) => a.date.localeCompare(b.date));
-    let pointer = 0;
-    let latestValue = 0;
-
-    for (const date of calendarDates) {
-      while (pointer < sorted.length) {
-        const rec = sorted[pointer];
-
-        if (!rec || rec.date > date) {
-          break;
-        }
-
-        latestValue = await getUsdValue(rec);
-        pointer += 1;
-      }
-
-      fundValueByDate.set(
-        date,
-        roundNumber((fundValueByDate.get(date) ?? 0) + latestValue),
-      );
-    }
-  }
-
-  return fundValueByDate;
+  return {
+    totalDays: calendar.length,
+    winningDays,
+    losingDays,
+    flatDays,
+    winRate,
+    maxDrawdown: {
+      amountUsd: roundNumber(maxDrawdownAmount),
+      percent: roundNumber(maxDrawdownPercent),
+      peakDate,
+      troughDate,
+    },
+    cumulativeEquityCurve,
+  };
 }
 
 export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
   calendar: PortfolioCalendarDayRecord[];
   snapshots: PortfolioSnapshotRecord[];
+  breakdown: RebuildBreakdown;
 }> {
   const [binanceHistory, marketHistory, fundHistory, store] = await Promise.all([
     readBinanceHistory(),
@@ -374,66 +447,120 @@ export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
   ]);
 
   const now = nowIso();
-  const links = store.accountAssetLinks ?? [];
-  const quantityByAsset = buildQuantityByAsset(links);
 
-  const stockPnlByDate = buildStockDailyPnlMap(marketHistory, quantityByAsset);
-  const fundPnlByDate = await buildFundDailyPnlMap(fundHistory, quantityByAsset);
   const aggregatedBinanceByDate = aggregateBinanceHistoryByDate(binanceHistory);
+  const transactionDates = buildTransactionDates(store);
 
   const calendarDates = getAllCalendarDates(
     aggregatedBinanceByDate,
-    stockPnlByDate,
-    fundPnlByDate,
-  );
-
-  const stockValueByDate = buildStockDailyValueMap(
     marketHistory,
-    quantityByAsset,
-    calendarDates,
+    fundHistory,
+    transactionDates,
   );
 
-  const fundValueByDate = await buildFundDailyValueMap(
-    fundHistory,
-    quantityByAsset,
-    calendarDates,
+  const marketHistoryByAsset = buildMarketHistoryByAsset(marketHistory);
+  const fundHistoryByAsset = buildFundHistoryByAsset(fundHistory);
+
+  const txsSorted = [...(store.transactions ?? [])].sort((a: any, b: any) =>
+    String(a.executedAt ?? "").localeCompare(String(b.executedAt ?? "")),
+  );
+
+  const stateByAsset = buildInitialTransactionStateMap(store);
+
+  const assetById = new Map(
+    (store.assets ?? []).map((asset: any) => [asset.id, asset]),
   );
 
   const calendarByDate = new Map<string, PortfolioCalendarDayRecord>();
   let latestBinanceTrackedValue = 0;
+  let previousTotalPnlCumulative = 0;
 
   for (const date of calendarDates) {
-    const binanceDay = aggregatedBinanceByDate.get(date) ?? null;
-    const stockPnl = stockPnlByDate.get(date) ?? null;
-    const fundPnl = fundPnlByDate.get(date) ?? null;
+    await applyTransactionsUpToDate(txsSorted, date, stateByAsset);
 
-    const realizedPnl = binanceDay ? roundNumber(binanceDay.realizedPnl) : null;
+    const binanceDay = aggregatedBinanceByDate.get(date) ?? null;
 
     if (binanceDay?.hasSnapshotData) {
       latestBinanceTrackedValue = roundNumber(binanceDay.totalTrackedUsd);
     }
 
-    const binancePnl = realizedPnl;
-    const unrealizedPnl = null;
+    let stockValueUsd = 0;
+    let fundValueUsd = 0;
+    let stockRealizedUsd = 0;
+    let fundRealizedUsd = 0;
+    let stockOpenCostUsd = 0;
+    let fundOpenCostUsd = 0;
 
-    const totalPnl = roundNumber(
-      (binancePnl ?? 0) +
-        (stockPnl ?? 0) +
-        (fundPnl ?? 0),
+    for (const [assetId, state] of stateByAsset.entries()) {
+      const asset = assetById.get(assetId);
+      if (!asset) {
+        continue;
+      }
+
+      if (asset.category === "stock") {
+        const records = marketHistoryByAsset.get(assetId) ?? [];
+        const unitPriceUsd = await getLatestStockUnitPriceUsdOnOrBeforeDate(records, date);
+
+        stockValueUsd = roundNumber(stockValueUsd + (unitPriceUsd * state.quantity));
+        stockRealizedUsd = roundNumber(stockRealizedUsd + state.realizedPnlUsd);
+        stockOpenCostUsd = roundNumber(stockOpenCostUsd + state.openCostUsd);
+      }
+
+      if (asset.category === "fund") {
+        const records = fundHistoryByAsset.get(assetId) ?? [];
+        const unitPriceUsd = await getLatestFundUnitPriceUsdOnOrBeforeDate(records, date);
+
+        fundValueUsd = roundNumber(fundValueUsd + (unitPriceUsd * state.quantity));
+        fundRealizedUsd = roundNumber(fundRealizedUsd + state.realizedPnlUsd);
+        fundOpenCostUsd = roundNumber(fundOpenCostUsd + state.openCostUsd);
+      }
+    }
+
+    const stockUnrealizedUsd = roundNumber(stockValueUsd - stockOpenCostUsd);
+    const fundUnrealizedUsd = roundNumber(fundValueUsd - fundOpenCostUsd);
+
+    const stockTotalPnlCumulative = roundNumber(stockRealizedUsd + stockUnrealizedUsd);
+    const fundTotalPnlCumulative = roundNumber(fundRealizedUsd + fundUnrealizedUsd);
+
+    const binanceRealizedUsd = roundNumber(binanceDay?.realizedPnl ?? 0);
+    const binanceUnrealizedUsd = roundNumber(binanceDay?.futuresUnrealizedPnl ?? 0);
+    const binanceTotalPnlCumulative = roundNumber(binanceRealizedUsd + binanceUnrealizedUsd);
+
+    const totalPnlCumulative = roundNumber(
+      stockTotalPnlCumulative +
+        fundTotalPnlCumulative +
+        binanceTotalPnlCumulative,
     );
 
-    const stockValueUsd = stockValueByDate.get(date) ?? 0;
-    const fundValueUsd = fundValueByDate.get(date) ?? 0;
+    const dailyTotalPnl = roundNumber(
+      totalPnlCumulative - previousTotalPnlCumulative,
+    );
+
+    previousTotalPnlCumulative = totalPnlCumulative;
+
+    const realizedPnl = roundNumber(
+      stockRealizedUsd + fundRealizedUsd + binanceRealizedUsd,
+    );
+
+    const unrealizedPnl = roundNumber(
+      stockUnrealizedUsd + fundUnrealizedUsd + binanceUnrealizedUsd,
+    );
+
+    const binancePnl = roundNumber(binanceTotalPnlCumulative);
+    const stockPnl = roundNumber(stockTotalPnlCumulative);
+    const fundPnl = roundNumber(fundTotalPnlCumulative);
 
     calendarByDate.set(date, {
       date,
-      totalPnl,
+      totalPnl: dailyTotalPnl,
       realizedPnl,
       unrealizedPnl,
       binancePnl,
       stockPnl,
       fundPnl,
-      endValueUsd: roundNumber(latestBinanceTrackedValue + stockValueUsd + fundValueUsd),
+      endValueUsd: roundNumber(
+        latestBinanceTrackedValue + stockValueUsd + fundValueUsd,
+      ),
       hasData: true,
       createdAt: binanceDay?.createdAt ?? now,
       updatedAt: now,
@@ -445,15 +572,29 @@ export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
   );
 
   const snapshots: PortfolioSnapshotRecord[] = calendar.map((day) => {
-    const stockValueUsd = stockValueByDate.get(day.date) ?? 0;
-    const fundValueUsd = fundValueByDate.get(day.date) ?? 0;
+    const binanceDay = aggregatedBinanceByDate.get(day.date) ?? null;
     const binanceValueUsd = roundNumber(
-      (day.endValueUsd ?? 0) - stockValueUsd - fundValueUsd,
+      binanceDay?.hasSnapshotData ? binanceDay.totalTrackedUsd : 0,
     );
 
+    let stockValueUsd = 0;
+    let fundValueUsd = 0;
+
+    for (const [assetId, asset] of assetById.entries()) {
+      const dayState = buildInitialTransactionStateMap(store).get(assetId);
+      void dayState;
+      if (asset.category === "stock" || asset.category === "fund") {
+        // values are rebuilt from calendar loop below using same endValue decomposition
+      }
+    }
+
+    const totalValueUsd = roundNumber(day.endValueUsd ?? 0);
+
+    // derive stock + fund from current end value minus binance using latest recomputation
+    // recompute deterministically for the snapshot date
     return {
       date: day.date,
-      totalValueUsd: roundNumber(day.endValueUsd ?? 0),
+      totalValueUsd,
       binanceValueUsd,
       stockValueUsd,
       fundValueUsd,
@@ -464,11 +605,52 @@ export async function rebuildDerivedPortfolioViewsFromHistory(): Promise<{
     };
   });
 
+  /**
+   * Recompute stock/fund snapshot values exactly per date
+   */
+  const txsSortedForSnapshots = [...(store.transactions ?? [])].sort((a: any, b: any) =>
+    String(a.executedAt ?? "").localeCompare(String(b.executedAt ?? "")),
+  );
+  const snapshotStateByAsset = buildInitialTransactionStateMap(store);
+
+  for (const snapshot of snapshots) {
+    await applyTransactionsUpToDate(txsSortedForSnapshots, snapshot.date, snapshotStateByAsset);
+
+    let stockValueUsd = 0;
+    let fundValueUsd = 0;
+
+    for (const [assetId, state] of snapshotStateByAsset.entries()) {
+      const asset = assetById.get(assetId);
+      if (!asset) continue;
+
+      if (asset.category === "stock") {
+        const records = marketHistoryByAsset.get(assetId) ?? [];
+        const unitPriceUsd = await getLatestStockUnitPriceUsdOnOrBeforeDate(records, snapshot.date);
+        stockValueUsd = roundNumber(stockValueUsd + (unitPriceUsd * state.quantity));
+      }
+
+      if (asset.category === "fund") {
+        const records = fundHistoryByAsset.get(assetId) ?? [];
+        const unitPriceUsd = await getLatestFundUnitPriceUsdOnOrBeforeDate(records, snapshot.date);
+        fundValueUsd = roundNumber(fundValueUsd + (unitPriceUsd * state.quantity));
+      }
+    }
+
+    snapshot.stockValueUsd = roundNumber(stockValueUsd);
+    snapshot.fundValueUsd = roundNumber(fundValueUsd);
+    snapshot.totalValueUsd = roundNumber(
+      snapshot.binanceValueUsd + snapshot.stockValueUsd + snapshot.fundValueUsd,
+    );
+  }
+
+  const breakdown = buildBreakdown(calendar, snapshots);
+
   await writePortfolioCalendar(calendar);
   await writePortfolioSnapshots(snapshots);
 
   return {
     calendar,
     snapshots,
+    breakdown,
   };
 }

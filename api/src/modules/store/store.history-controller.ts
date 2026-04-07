@@ -75,6 +75,9 @@ export async function getPortfolioSnapshotsHandler(_req: Request, res: Response,
   }
 }
 
+/**
+ * 🔥 MAIN: REBUILD + BREAKDOWN
+ */
 export async function rebuildDerivedPortfolioViewsHandler(
   _req: Request,
   res: Response,
@@ -83,9 +86,30 @@ export async function rebuildDerivedPortfolioViewsHandler(
   try {
     const result = await rebuildDerivedPortfolioViewsFromHistory();
 
+    const { calendar, snapshots, breakdown } = result;
+
     res.status(201).json({
       ok: true,
-      data: result
+      data: {
+        calendar,
+        snapshots,
+
+        /**
+         * 🧠 flatten ให้ frontend ใช้ง่าย
+         */
+        breakdown: {
+          totalDays: breakdown.totalDays,
+          winningDays: breakdown.winningDays,
+          losingDays: breakdown.losingDays,
+          flatDays: breakdown.flatDays,
+
+          winRate: breakdown.winRate,
+
+          maxDrawdown: breakdown.maxDrawdown,
+
+          equityCurve: breakdown.cumulativeEquityCurve
+        }
+      }
     });
   } catch (error) {
     next(error);

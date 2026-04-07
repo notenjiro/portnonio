@@ -36,31 +36,88 @@ function groupByAsset<T extends { assetId: string; date: string }>(
   return map;
 }
 
-function getLastTwoRecords<T>(records: T[]): {
-  latest: T | null;
-  previous: T | null;
-} {
-  if (records.length === 0) {
-    return { latest: null, previous: null };
-  }
-
-  if (records.length === 1) {
-    return { latest: records[0] ?? null, previous: null };
-  }
+function getLastTwoRecords<T>(records: T[]) {
+  if (records.length === 0) return { latest: null, previous: null };
+  if (records.length === 1) return { latest: records[0], previous: null };
 
   return {
-    latest: records[records.length - 1] ?? null,
-    previous: records[records.length - 2] ?? null,
+    latest: records[records.length - 1],
+    previous: records[records.length - 2],
   };
 }
 
+async function convertFeeToBase(tx: any): Promise<number> {
+  const fee = Number(tx.fee ?? 0);
+  if (!Number.isFinite(fee) || fee <= 0) return 0;
+
+  return convertAmount(
+    fee,
+    tx.feeCurrency ?? tx.currency,
+    BASE_CURRENCY,
+    tx.executedAt
+  );
+}
+
 /**
- * 🔥 TEMP COST BASIS (Phase 1)
- * ตอนนี้ยังไม่มี order → ใช้ heuristic ไปก่อน
+ * 🔥 CORE: derive EVERYTHING from transactions
  */
-function getAvgCostFallback(price: number | null): number | null {
-  if (!price) return null;
-  return price * 0.9; // 👈 สมมติว่าซื้อถูกกว่า 10% (placeholder)
+async function calculatePositionState(store: any, assetId: string) {
+  const txs = (store.transactions ?? [])
+    .filter((t: any) => t.assetId === assetId)
+    .sort((a: any, b: any) => a.executedAt.localeCompare(b.executedAt));
+
+  let openQty = 0;
+  let openCost = 0;
+  let realizedPnl = 0;
+
+  for (const tx of txs) {
+    const qty = Number(tx.quantity ?? 0);
+    if (!qty || qty <= 0) continue;
+
+    const priceBase = await convertAmount(
+      Number(tx.price),
+      tx.currency,
+      BASE_CURRENCY,
+      tx.executedAt
+    );
+
+    const feeBase = await convertFeeToBase(tx);
+
+    if (tx.side === "buy") {
+      openQty += qty;
+      openCost += (priceBase * qty) + feeBase;
+      continue;
+    }
+
+    if (tx.side === "sell") {
+      if (openQty <= 0) continue;
+
+      const sellQty = Math.min(qty, openQty);
+      const avgCost = openQty > 0 ? openCost / openQty : 0;
+
+      const proceeds = (priceBase * sellQty) - feeBase;
+      const costRemoved = avgCost * sellQty;
+
+      realizedPnl += proceeds - costRemoved;
+
+      openQty -= sellQty;
+      openCost -= costRemoved;
+
+      if (openQty <= 0.00000001) {
+        openQty = 0;
+        openCost = 0;
+      }
+    }
+  }
+
+  const avgCost = openQty > 0 ? openCost / openQty : null;
+
+  return {
+    quantity: round(openQty),
+    avgCost: avgCost ? round(avgCost) : null,
+    costValue: openQty > 0 ? round(openCost) : null,
+    realizedPnl: round(realizedPnl),
+  };
 }
 
 export async function getPortfolioAssets() {
@@ -75,25 +132,21 @@ export async function getPortfolioAssets() {
 
   const result = [];
 
-  for (const link of store.accountAssetLinks ?? []) {
-    const asset = store.assets.find((a) => a.id === link.assetId);
-    if (!asset) continue;
+  /**
+   * 🔥 loop by ASSET (ไม่ใช้ link แล้ว)
+   */
+  for (const asset of store.assets) {
+    const state = await calculatePositionState(store, asset.id);
+
+    if (state.quantity <= 0) continue; // skip empty
 
     let price: number | null = null;
     let value: number | null = null;
     let lastUpdated: string | null = null;
     let dailyPnl: number | null = null;
     let changePercent: number | null = null;
-
-    let avgCost: number | null = null;
-    let costValue: number | null = null;
     let unrealizedPnl: number | null = null;
 
-    const qty = link.quantity ?? 1;
-
-    /**
-     * 📈 STOCK
-     */
     if (asset.category === "stock") {
       const records = marketByAsset.get(asset.id) ?? [];
       const { latest, previous } = getLastTwoRecords(records);
@@ -107,15 +160,15 @@ export async function getPortfolioAssets() {
         );
 
         price = round(priceTHB);
-        value = round(priceTHB * qty);
+        value = round(priceTHB * state.quantity);
         lastUpdated = latest.updatedAt;
         changePercent = latest.changePercent ?? null;
 
-        // 🔥 cost basis
-        avgCost = getAvgCostFallback(priceTHB);
-        costValue = avgCost ? round(avgCost * qty) : null;
-        unrealizedPnl =
-          avgCost !== null ? round((priceTHB - avgCost) * qty) : null;
+        if (state.avgCost !== null) {
+          unrealizedPnl = round(
+            (priceTHB - state.avgCost) * state.quantity
+          );
+        }
 
         if (previous) {
           const prevPriceTHB = await convertAmount(
@@ -125,14 +178,13 @@ export async function getPortfolioAssets() {
             previous.date
           );
 
-          dailyPnl = round((priceTHB - prevPriceTHB) * qty);
+          dailyPnl = round(
+            (priceTHB - prevPriceTHB) * state.quantity
+          );
         }
       }
     }
 
-    /**
-     * 💰 FUND
-     */
     if (asset.category === "fund") {
       const records = fundByAsset.get(asset.id) ?? [];
       const { latest, previous } = getLastTwoRecords(records);
@@ -149,15 +201,14 @@ export async function getPortfolioAssets() {
               );
 
         price = round(priceTHB);
-        value = round(priceTHB * qty);
+        value = round(priceTHB * state.quantity);
         lastUpdated = latest.updatedAt;
-        changePercent = latest.changePercent ?? null;
 
-        // 🔥 cost basis
-        avgCost = getAvgCostFallback(priceTHB);
-        costValue = avgCost ? round(avgCost * qty) : null;
-        unrealizedPnl =
-          avgCost !== null ? round((priceTHB - avgCost) * qty) : null;
+        if (state.avgCost !== null) {
+          unrealizedPnl = round(
+            (priceTHB - state.avgCost) * state.quantity
+          );
+        }
 
         if (previous) {
           const prevPriceTHB =
@@ -170,28 +221,29 @@ export async function getPortfolioAssets() {
                   previous.date
                 );
 
-          dailyPnl = round((priceTHB - prevPriceTHB) * qty);
+          dailyPnl = round(
+            (priceTHB - prevPriceTHB) * state.quantity
+          );
         }
       }
     }
 
     result.push({
-      linkId: link.id,
       assetId: asset.id,
       symbol: asset.symbol,
       name: asset.name,
       category: asset.category,
-      quantity: qty,
+
+      quantity: state.quantity,
 
       price,
       value,
 
-      // 🔥 NEW (สำคัญ)
-      avgCost,
-      costValue,
+      avgCost: state.avgCost,
+      costValue: state.costValue,
       unrealizedPnl,
+      realizedPnl: state.realizedPnl,
 
-      // เดิม
       dailyPnl,
       changePercent,
       lastUpdated,

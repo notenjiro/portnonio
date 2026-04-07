@@ -103,6 +103,7 @@ type ApiEnvelope<T> = {
 type DashboardApiData = {
   overview: {
     asOf: string | null;
+    baseCurrency: "THB" | "USD";
     totals: {
       totalTrackedUsd: number;
       binanceTrackedUsd: number;

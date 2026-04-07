@@ -114,6 +114,8 @@ function buildAllocation(
   }));
 }
 
+import { convertAmount } from "../../services/fx-rate.service";
+
 async function getAggregatedBinancePortfolio(): Promise<AggregatedBinancePortfolioResponse | null> {
   const store = await readStore();
 
@@ -142,25 +144,53 @@ async function getAggregatedBinancePortfolio(): Promise<AggregatedBinancePortfol
     (portfolio) => portfolio.futures.positions
   );
 
+  /**
+   * 🔥 FIX: convert USD → THB
+   */
+  let totalSpotValue = 0;
+  let totalFuturesNotional = 0;
+  let totalUnrealized = 0;
+
+  for (const portfolio of portfolios) {
+    const date = portfolio.fetchedAt;
+
+    totalSpotValue += await convertAmount(
+      portfolio.spot.totalValueUsd,
+      "USD",
+      "THB",
+      date
+    );
+
+    totalFuturesNotional += await convertAmount(
+      portfolio.futures.totalNotionalUsd,
+      "USD",
+      "THB",
+      date
+    );
+
+    totalUnrealized += await convertAmount(
+      portfolio.futures.totalUnrealizedPnl,
+      "USD",
+      "THB",
+      date
+    );
+  }
+
   return {
     fetchedAt,
     accountCount: portfolios.length,
+
     spot: {
       holdings: spotHoldings,
-      totalValue: roundNumber(
-        portfolios.reduce((sum, portfolio) => sum + portfolio.spot.totalValueUsd, 0)
-      ),
-      pricedCount: portfolios.reduce((sum, portfolio) => sum + portfolio.spot.pricedCount, 0),
-      unpricedCount: portfolios.reduce((sum, portfolio) => sum + portfolio.spot.unpricedCount, 0)
+      totalValue: roundNumber(totalSpotValue),
+      pricedCount: portfolios.reduce((sum, p) => sum + p.spot.pricedCount, 0),
+      unpricedCount: portfolios.reduce((sum, p) => sum + p.spot.unpricedCount, 0)
     },
+
     futures: {
       positions: futuresPositions,
-      totalNotional: roundNumber(
-        portfolios.reduce((sum, portfolio) => sum + portfolio.futures.totalNotionalUsd, 0)
-      ),
-      totalUnrealizedPnl: roundNumber(
-        portfolios.reduce((sum, portfolio) => sum + portfolio.futures.totalUnrealizedPnl, 0)
-      ),
+      totalNotional: roundNumber(totalFuturesNotional),
+      totalUnrealizedPnl: roundNumber(totalUnrealized),
       positionCount: futuresPositions.length
     }
   };

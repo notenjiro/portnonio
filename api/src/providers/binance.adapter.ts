@@ -1,3 +1,4 @@
+import { randomUUID } from "crypto";
 import { env } from "../config/env";
 import { createBinanceSignature, buildQueryString } from "../lib/binance-signature";
 import { getJson } from "../lib/http-client";
@@ -14,6 +15,32 @@ import type {
   BinanceSpotHoldingsResponse,
   BinanceSyncReadiness
 } from "./provider.types";
+
+interface BinanceSpotTradeApiItem {
+  symbol: string;
+  id: number;
+  orderId: number;
+  price: string;
+  qty: string;
+  quoteQty: string;
+  commission: string;
+  commissionAsset: string;
+  time: number;
+  isBuyer: boolean;
+}
+
+interface BinanceFuturesTradeApiItem {
+  symbol: string;
+  id: number;
+  orderId: number;
+  price: string;
+  qty: string;
+  quoteQty: string;
+  commission: string;
+  commissionAsset: string;
+  time: number;
+  side: "BUY" | "SELL";
+}
 
 interface BinanceTickerPriceResponse {
   symbol: string;
@@ -226,6 +253,41 @@ async function signedFuturesGet<T>(
       "X-MBX-APIKEY": settings.apiKey
     }
   });
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+function toIsoFromEpochMs(value: number): string {
+  return new Date(value).toISOString();
+}
+
+function buildExistingTradeKey(assetId: string, market: "spot" | "futures", tradeId: string): string {
+  return `${assetId}_${market}_${tradeId}`;
+}
+
+function getLastTradeCursorByAssetAndMarket(
+  transactions: any[],
+  market: "spot" | "futures"
+): Map<string, number> {
+  const result = new Map<string, number>();
+
+  for (const tx of transactions) {
+    if (tx?.source !== "binance") continue;
+    if (tx?.market !== market) continue;
+    if (typeof tx?.assetId !== "string") continue;
+
+    const parsedTradeId = Number(tx.tradeId);
+    if (!Number.isFinite(parsedTradeId)) continue;
+
+    const prev = result.get(tx.assetId) ?? 0;
+    if (parsedTradeId > prev) {
+      result.set(tx.assetId, parsedTradeId);
+    }
+  }
+
+  return result;
 }
 
 export async function getBinanceSyncReadiness(accountId: string): Promise<BinanceSyncReadiness> {
@@ -492,4 +554,245 @@ export async function getBinanceFuturesIncomeHistory(
     tranId: item.tranId,
     tradeId: item.tradeId
   }));
+}
+
+export async function getBinanceSpotTrades(
+  accountId: string,
+  symbol: string,
+  params: {
+    limit?: number;
+    fromId?: number;
+  } = {}
+): Promise<BinanceSpotTradeApiItem[]> {
+  return signedSpotGet<BinanceSpotTradeApiItem[]>(
+    accountId,
+    "/api/v3/myTrades",
+    {
+      symbol,
+      limit: params.limit ?? 500,
+      ...(params.fromId ? { fromId: params.fromId } : {})
+    }
+  );
+}
+
+export async function getBinanceFuturesTrades(
+  accountId: string,
+  symbol: string,
+  params: {
+    limit?: number;
+    fromId?: number;
+  } = {}
+): Promise<BinanceFuturesTradeApiItem[]> {
+  return signedFuturesGet<BinanceFuturesTradeApiItem[]>(
+    accountId,
+    "/fapi/v1/userTrades",
+    {
+      symbol,
+      limit: params.limit ?? 500,
+      ...(params.fromId ? { fromId: params.fromId } : {})
+    }
+  );
+}
+
+function mapSpotTradeToTransaction(
+  trade: BinanceSpotTradeApiItem,
+  assetId: string
+) {
+  return {
+    assetId,
+    market: "spot" as const,
+    side: trade.isBuyer ? "buy" : "sell",
+    quantity: Number(trade.qty),
+    price: Number(trade.price),
+    currency: "USD" as const,
+    fee: Number(trade.commission),
+    feeCurrency: trade.commissionAsset,
+    executedAt: toIsoFromEpochMs(trade.time),
+    source: "binance" as const,
+    orderId: String(trade.orderId),
+    tradeId: String(trade.id)
+  };
+}
+
+function mapFuturesTradeToTransaction(
+  trade: BinanceFuturesTradeApiItem,
+  assetId: string
+) {
+  return {
+    assetId,
+    market: "futures" as const,
+    side: trade.side === "BUY" ? "buy" : "sell",
+    quantity: Number(trade.qty),
+    price: Number(trade.price),
+    currency: "USD" as const,
+    fee: Number(trade.commission),
+    feeCurrency: trade.commissionAsset,
+    executedAt: toIsoFromEpochMs(trade.time),
+    source: "binance" as const,
+    orderId: String(trade.orderId),
+    tradeId: String(trade.id)
+  };
+}
+
+async function fetchAllSpotTradesIncremental(
+  accountId: string,
+  assetId: string,
+  symbol: string,
+  lastTradeId?: number
+): Promise<ReturnType<typeof mapSpotTradeToTransaction>[]> {
+  const collected: ReturnType<typeof mapSpotTradeToTransaction>[] = [];
+  let fromId = lastTradeId && lastTradeId > 0 ? lastTradeId + 1 : undefined;
+
+  while (true) {
+    const page = await getBinanceSpotTrades(accountId, symbol, {
+      limit: 500,
+      fromId
+    });
+
+    if (!page.length) {
+      break;
+    }
+
+    for (const trade of page) {
+      collected.push(mapSpotTradeToTransaction(trade, assetId));
+    }
+
+    if (page.length < 500) {
+      break;
+    }
+
+    const last = page[page.length - 1];
+    if (!last) {
+      break;
+    }
+
+    fromId = last.id + 1;
+    await sleep(200);
+  }
+
+  return collected;
+}
+
+async function fetchAllFuturesTradesIncremental(
+  accountId: string,
+  assetId: string,
+  symbol: string,
+  lastTradeId?: number
+): Promise<ReturnType<typeof mapFuturesTradeToTransaction>[]> {
+  const collected: ReturnType<typeof mapFuturesTradeToTransaction>[] = [];
+  let fromId = lastTradeId && lastTradeId > 0 ? lastTradeId + 1 : undefined;
+
+  while (true) {
+    const page = await getBinanceFuturesTrades(accountId, symbol, {
+      limit: 500,
+      fromId
+    });
+
+    if (!page.length) {
+      break;
+    }
+
+    for (const trade of page) {
+      collected.push(mapFuturesTradeToTransaction(trade, assetId));
+    }
+
+    if (page.length < 500) {
+      break;
+    }
+
+    const last = page[page.length - 1];
+    if (!last) {
+      break;
+    }
+
+    fromId = last.id + 1;
+    await sleep(200);
+  }
+
+  return collected;
+}
+
+export async function syncBinanceTradesToStore(accountId: string) {
+  const store = await readStore();
+
+  const assets = store.assets.filter((a) => a.source === "binance");
+  const existingTx = store.transactions ?? [];
+
+  const lastSpotTradeIdByAsset = getLastTradeCursorByAssetAndMarket(existingTx, "spot");
+  const lastFuturesTradeIdByAsset = getLastTradeCursorByAssetAndMarket(existingTx, "futures");
+
+  const existingKeys = new Set(
+    existingTx
+      .filter((t: any) => t?.source === "binance")
+      .map((t: any) =>
+        buildExistingTradeKey(
+          t.assetId,
+          t.market === "futures" ? "futures" : "spot",
+          String(t.tradeId)
+        )
+      )
+  );
+
+  const newTransactions: any[] = [];
+
+  for (const asset of assets) {
+    const symbol = asset.symbol;
+
+    try {
+      const spotTrades = await fetchAllSpotTradesIncremental(
+        accountId,
+        asset.id,
+        symbol,
+        lastSpotTradeIdByAsset.get(asset.id)
+      );
+
+      for (const trade of spotTrades) {
+        const key = buildExistingTradeKey(asset.id, "spot", trade.tradeId);
+        if (existingKeys.has(key)) continue;
+        existingKeys.add(key);
+        newTransactions.push(trade);
+      }
+    } catch {
+      // ignore per-symbol failures to keep sync resilient
+    }
+
+    await sleep(150);
+
+    try {
+      const futuresTrades = await fetchAllFuturesTradesIncremental(
+        accountId,
+        asset.id,
+        symbol,
+        lastFuturesTradeIdByAsset.get(asset.id)
+      );
+
+      for (const trade of futuresTrades) {
+        const key = buildExistingTradeKey(asset.id, "futures", trade.tradeId);
+        if (existingKeys.has(key)) continue;
+        existingKeys.add(key);
+        newTransactions.push(trade);
+      }
+    } catch {
+      // ignore per-symbol failures to keep sync resilient
+    }
+
+    await sleep(150);
+  }
+
+  store.transactions = [
+    ...existingTx,
+    ...newTransactions.map((t) => ({
+      id: randomUUID(),
+      accountId,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      ...t
+    }))
+  ];
+
+  await writeStore(store);
+
+  return {
+    inserted: newTransactions.length
+  };
 }

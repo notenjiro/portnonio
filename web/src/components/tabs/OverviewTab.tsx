@@ -38,13 +38,17 @@ function getAllocationItems(
   const items = allocation.map((item) => ({
     key: item.key,
     label: item.label,
-    value: Number(item.valueUsd ?? 0),
+    value: Number((item as any).value ?? (item as any).valueUsd ?? 0),
     percent: clampPercent(Number((item.weight ?? 0) * 100)),
   }));
 
   return items
     .filter((item) => item.value > 0)
     .sort((a, b) => b.value - a.value);
+}
+
+function hasMeaningfulValue(value: number | null | undefined) {
+  return Number(value ?? 0) > 0;
 }
 
 export default function OverviewTab({ refreshKey, filter }: Props) {
@@ -86,8 +90,12 @@ export default function OverviewTab({ refreshKey, filter }: Props) {
     };
   }, [refreshKey, filter, localRefreshKey]);
 
+  const baseCurrency = dashboard?.overview?.baseCurrency ?? "USD";
+
   const futuresWallet =
-    dashboard?.latestBinancePortfolio?.futures.totalNotionalUsd ??
+    (dashboard?.latestBinancePortfolio?.futures as any)?.totalNotional ??
+    dashboard?.latestBinancePortfolio?.futures?.totalNotionalUsd ??
+    (dashboard?.overview.binance as any)?.futuresNotional ??
     dashboard?.overview.binance.futuresNotionalUsd ??
     0;
 
@@ -96,10 +104,25 @@ export default function OverviewTab({ refreshKey, filter }: Props) {
     dashboard?.overview.binance.futuresUnrealizedPnl ??
     0;
 
-  const stockValue = dashboard?.overview.totals.stockTrackedUsd ?? 0;
-  const fundValue = dashboard?.overview.totals.fundTrackedUsd ?? 0;
-  const cashBalance = dashboard?.overview.totals.cashTrackedUsd ?? 0;
-  const totalTracked = dashboard?.overview.totals.totalTrackedUsd ?? 0;
+  const stockValue =
+    (dashboard?.overview.totals as any)?.stockTrackedValue ??
+    dashboard?.overview.totals.stockTrackedUsd ??
+    0;
+
+  const fundValue =
+    (dashboard?.overview.totals as any)?.fundTrackedValue ??
+    dashboard?.overview.totals.fundTrackedUsd ??
+    0;
+
+  const cashBalance =
+    (dashboard?.overview.totals as any)?.cashTrackedValue ??
+    dashboard?.overview.totals.cashTrackedUsd ??
+    0;
+
+  const totalTracked =
+    (dashboard?.overview.totals as any)?.totalTrackedValue ??
+    dashboard?.overview.totals.totalTrackedUsd ??
+    0;
 
   const lossPct =
     futuresWallet > 0 && futuresPnL < 0
@@ -132,6 +155,33 @@ export default function OverviewTab({ refreshKey, filter }: Props) {
     0,
   );
 
+  const hasFuturesData =
+    Math.abs(futuresWallet) > 0 || Math.abs(futuresPnL) > 0;
+
+  const assetCards = [
+    {
+      key: "stocks",
+      label: "Stocks",
+      value: stockValue,
+      className:
+        "border-sky-100 bg-gradient-to-b from-sky-50/85 to-white shadow-[0_10px_28px_rgba(125,211,252,0.08)]",
+    },
+    {
+      key: "funds",
+      label: "Funds",
+      value: fundValue,
+      className:
+        "border-violet-100 bg-gradient-to-b from-violet-50/85 to-white shadow-[0_10px_28px_rgba(167,139,250,0.08)]",
+    },
+    {
+      key: "cash",
+      label: "Cash",
+      value: cashBalance,
+      className:
+        "border-emerald-100 bg-gradient-to-b from-emerald-50/85 to-white shadow-[0_10px_28px_rgba(16,185,129,0.08)]",
+    },
+  ].filter((item) => hasMeaningfulValue(item.value));
+
   if (loading) {
     return (
       <div className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 text-sm text-slate-500 shadow-[0_12px_34px_rgba(15,23,42,0.05)]">
@@ -160,39 +210,27 @@ export default function OverviewTab({ refreshKey, filter }: Props) {
         </button>
       </div>
 
-      <div className="space-y-6">
-        <section className="grid gap-4 md:grid-cols-4">
+      <div className="space-y-5">
+        <section
+          className={`grid gap-4 ${
+            hasFuturesData ? "md:grid-cols-3" : "md:grid-cols-2"
+          }`}
+        >
           <div className="rounded-3xl border border-sky-100 bg-gradient-to-b from-sky-50/85 to-white p-5 shadow-[0_10px_28px_rgba(125,211,252,0.08)]">
             <p className="text-sm text-slate-500">Total Tracked</p>
             <p className="mt-2 text-xl font-semibold text-slate-900">
-              {formatMoney(totalTracked)}
+              {formatMoney(totalTracked, 2, baseCurrency)}
             </p>
           </div>
 
-          <div className={`rounded-3xl border p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] ${pnlCardTone(futuresPnL)}`}>
-            <p className="text-sm text-slate-500">Futures Unrealized P/L</p>
-            <p className={`mt-2 text-xl font-semibold ${pnlTextColor(futuresPnL)}`}>
-              {formatSignedMoney(futuresPnL)}
-            </p>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200/70 bg-gradient-to-b from-slate-50/85 to-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-            <p className="text-sm text-slate-500">Risk Status</p>
-            <div className="mt-3 flex items-center gap-2">
-              <span
-                className={`h-3 w-3 rounded-full ${
-                  riskStatus === "High"
-                    ? "bg-rose-500"
-                    : riskStatus === "Medium"
-                      ? "bg-amber-400"
-                      : "bg-emerald-500"
-                }`}
-              />
-              <span className={`text-sm font-semibold ${riskTextClass}`}>
-                {riskStatus}
-              </span>
+          {hasFuturesData ? (
+            <div className={`rounded-3xl border p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)] ${pnlCardTone(futuresPnL)}`}>
+              <p className="text-sm text-slate-500">Futures Unrealized P/L</p>
+              <p className={`mt-2 text-xl font-semibold ${pnlTextColor(futuresPnL)}`}>
+                {formatSignedMoney(futuresPnL, 2, baseCurrency)}
+              </p>
             </div>
-          </div>
+          ) : null}
 
           <div className="rounded-3xl border border-slate-200/70 bg-gradient-to-b from-slate-50/85 to-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
             <p className="text-sm text-slate-500">As Of</p>
@@ -204,92 +242,127 @@ export default function OverviewTab({ refreshKey, filter }: Props) {
           </div>
         </section>
 
-        <section className="grid gap-4 xl:grid-cols-[1.2fr_0.8fr]">
-          <div className="rounded-3xl border border-sky-100 bg-gradient-to-b from-sky-50/85 via-white to-white p-6 shadow-[0_14px_38px_rgba(125,211,252,0.10)]">
-            <div className="mb-5 flex items-start justify-between gap-3">
-              <div>
-                <h2 className="text-xl font-semibold text-slate-900">Risk Overview</h2>
-                <p className="text-sm text-slate-500">
-                  Based on current unrealized loss relative to futures notional
-                </p>
+        {hasFuturesData ? (
+          <section className="grid gap-4 xl:grid-cols-[1.15fr_0.85fr]">
+            <div className="rounded-3xl border border-sky-100 bg-gradient-to-b from-sky-50/85 via-white to-white p-6 shadow-[0_14px_38px_rgba(125,211,252,0.10)]">
+              <div className="mb-5 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Risk Overview</h2>
+                  <p className="text-sm text-slate-500">
+                    Based on current unrealized loss relative to futures notional
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-3 w-3 rounded-full ${
+                      riskStatus === "High"
+                        ? "bg-rose-500"
+                        : riskStatus === "Medium"
+                          ? "bg-amber-400"
+                          : "bg-emerald-500"
+                    }`}
+                  />
+                </div>
               </div>
 
-              <div className="flex items-center gap-2">
-                <span
-                  className={`h-3 w-3 rounded-full ${
-                    riskStatus === "High"
-                      ? "bg-rose-500"
-                      : riskStatus === "Medium"
-                        ? "bg-amber-400"
-                        : "bg-emerald-500"
-                  }`}
-                />
-              </div>
-            </div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className={`rounded-2xl border p-4 shadow-sm ${pnlCardTone(-lossPct)}`}>
+                  <p className="text-sm text-muted-foreground">Unrealized Loss %</p>
+                  <p className={`mt-2 text-2xl font-semibold ${riskTextClass}`}>
+                    {lossPct.toLocaleString(undefined, {
+                      maximumFractionDigits: 2,
+                    })}
+                    %
+                  </p>
+                </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <div className={`rounded-2xl border p-4 shadow-sm ${pnlCardTone(-lossPct)}`}>
-                <p className="text-sm text-muted-foreground">Unrealized Loss %</p>
-                <p className={`mt-2 text-2xl font-semibold ${riskTextClass}`}>
-                  {lossPct.toLocaleString(undefined, {
-                    maximumFractionDigits: 2,
-                  })}
-                  %
-                </p>
-              </div>
-
-              <div
-                className={`rounded-2xl border p-4 shadow-sm ${pnlCardTone(
-                  futuresWallet + futuresPnL,
-                )}`}
-              >
-                <p className="text-sm text-muted-foreground">Futures Buffer</p>
-                <p
-                  className={`mt-2 text-2xl font-semibold ${pnlTextColor(
+                <div
+                  className={`rounded-2xl border p-4 shadow-sm ${pnlCardTone(
                     futuresWallet + futuresPnL,
                   )}`}
                 >
-                  {formatMoney(futuresWallet + futuresPnL)}
-                </p>
+                  <p className="text-sm text-muted-foreground">Futures Buffer</p>
+                  <p
+                    className={`mt-2 text-2xl font-semibold ${pnlTextColor(
+                      futuresWallet + futuresPnL,
+                    )}`}
+                  >
+                    {formatMoney(futuresWallet + futuresPnL, 2, baseCurrency)}
+                  </p>
+                </div>
+
+                <div className={`rounded-2xl border p-4 shadow-sm ${pnlCardTone(futuresPnL)}`}>
+                  <p className="text-sm text-muted-foreground">Futures Unrealized P/L</p>
+                  <p
+                    className={`mt-2 text-2xl font-semibold ${pnlTextColor(
+                      futuresPnL,
+                    )}`}
+                  >
+                    {formatSignedMoney(futuresPnL, 2, baseCurrency)}
+                  </p>
+                </div>
               </div>
 
-              <div className={`rounded-2xl border p-4 shadow-sm ${pnlCardTone(futuresPnL)}`}>
-                <p className="text-sm text-muted-foreground">Futures Unrealized P/L</p>
-                <p
-                  className={`mt-2 text-2xl font-semibold ${pnlTextColor(
-                    futuresPnL,
-                  )}`}
-                >
-                  {formatSignedMoney(futuresPnL)}
-                </p>
+              <div className="mt-5 rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm">
+                <div className="mb-2 flex items-center justify-between">
+                  <p className="text-sm text-slate-500">Risk Exposure</p>
+                  <p className={`text-sm font-semibold ${riskTextClass}`}>
+                    {riskStatus}
+                  </p>
+                </div>
+
+                <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
+                  <div
+                    className={`h-full rounded-full transition-all ${riskBarClass}`}
+                    style={{ width: `${Math.min(lossPct, 100)}%` }}
+                  />
+                </div>
+
+                <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
+                  <span>0%</span>
+                  <span>40%</span>
+                  <span>70%</span>
+                  <span>100%</span>
+                </div>
               </div>
             </div>
 
-            <div className="mt-5 rounded-2xl border border-slate-200/70 bg-white/70 p-4 shadow-sm">
-              <div className="mb-2 flex items-center justify-between">
-                <p className="text-sm text-slate-500">Risk Exposure</p>
-                <p className={`text-sm font-semibold ${riskTextClass}`}>
-                  {riskStatus}
-                </p>
+            <div className="rounded-3xl border border-violet-100 bg-gradient-to-b from-violet-50/85 via-white to-white p-6 shadow-[0_14px_38px_rgba(167,139,250,0.10)]">
+              <div className="mb-4 flex items-start justify-between gap-3">
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900">Portfolio Allocation</h2>
+                  <p className="text-sm text-slate-500">
+                    Current asset mix across monitored accounts
+                  </p>
+                </div>
+
+                {allocationItems.length > 0 ? (
+                  <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-2.5 text-right shadow-sm">
+                    <p className="text-[11px] uppercase tracking-wide text-slate-500">Tracked Value</p>
+                    <p className="mt-1 text-lg font-semibold text-slate-900">
+                      {formatMoney(allocationTotal, 2, baseCurrency)}
+                    </p>
+                  </div>
+                ) : null}
               </div>
 
-              <div className="h-3 w-full overflow-hidden rounded-full bg-slate-100">
-                <div
-                  className={`h-full rounded-full transition-all ${riskBarClass}`}
-                  style={{ width: `${Math.min(lossPct, 100)}%` }}
+              {allocationItems.length === 0 ? (
+                <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-4">
+                  <p className="text-sm text-slate-500">
+                    No allocation data yet.
+                  </p>
+                </div>
+              ) : (
+                <AllocationDonut
+                  items={allocationItems}
+                  totalValue={allocationTotal}
                 />
-              </div>
-
-              <div className="mt-2 flex items-center justify-between text-xs text-slate-400">
-                <span>0%</span>
-                <span>40%</span>
-                <span>70%</span>
-                <span>100%</span>
-              </div>
+              )}
             </div>
-          </div>
-
-          <div className="rounded-3xl border border-violet-100 bg-gradient-to-b from-violet-50/85 via-white to-white p-6 shadow-[0_14px_38px_rgba(167,139,250,0.10)]">
+          </section>
+        ) : allocationItems.length > 0 ? (
+          <section className="rounded-3xl border border-violet-100 bg-gradient-to-b from-violet-50/85 via-white to-white p-6 shadow-[0_14px_38px_rgba(167,139,250,0.10)]">
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h2 className="text-xl font-semibold text-slate-900">Portfolio Allocation</h2>
@@ -301,57 +374,40 @@ export default function OverviewTab({ refreshKey, filter }: Props) {
               <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-2.5 text-right shadow-sm">
                 <p className="text-[11px] uppercase tracking-wide text-slate-500">Tracked Value</p>
                 <p className="mt-1 text-lg font-semibold text-slate-900">
-                  {formatMoney(allocationTotal)}
+                  {formatMoney(allocationTotal, 2, baseCurrency)}
                 </p>
               </div>
             </div>
 
-            {allocationItems.length === 0 ? (
-              <div className="rounded-2xl border border-dashed border-slate-200 bg-white/60 p-5">
-                <p className="text-sm font-medium text-slate-900">No allocation data yet</p>
-                <p className="mt-1 text-sm text-slate-500">
-                  Connect Binance or add stock and fund data to build allocation.
-                </p>
-              </div>
-            ) : (
-              <AllocationDonut
-                items={allocationItems}
-                totalValue={allocationTotal}
-              />
-            )}
-          </div>
-        </section>
+            <AllocationDonut
+              items={allocationItems}
+              totalValue={allocationTotal}
+            />
+          </section>
+        ) : null}
 
-        <section className="rounded-3xl border border-slate-200/70 bg-white/80 p-6 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
-          <h2 className="mb-4 text-xl font-semibold text-slate-900">Connected Accounts</h2>
+        <section className="rounded-2xl border border-slate-200/70 bg-white/80 p-4 shadow-[0_14px_34px_rgba(15,23,42,0.05)]">
+          <div className="mb-3 flex items-center justify-between">
+            <h2 className="text-lg font-semibold text-slate-900">Connected Accounts</h2>
+          </div>
           <AccountList refreshKey={localRefreshKey} />
         </section>
 
-        <section className="grid gap-4 md:grid-cols-4">
-          <div className="rounded-3xl border border-sky-100 bg-gradient-to-b from-sky-50/85 to-white p-5 shadow-[0_10px_28px_rgba(125,211,252,0.08)]">
-            <p className="text-sm text-slate-500">Stocks</p>
-            <p className="mt-2 text-xl font-semibold text-slate-900">{formatMoney(stockValue)}</p>
-          </div>
-
-          <div className="rounded-3xl border border-violet-100 bg-gradient-to-b from-violet-50/85 to-white p-5 shadow-[0_10px_28px_rgba(167,139,250,0.08)]">
-            <p className="text-sm text-slate-500">Funds</p>
-            <p className="mt-2 text-xl font-semibold text-slate-900">{formatMoney(fundValue)}</p>
-          </div>
-
-          <div className="rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50/85 to-white p-5 shadow-[0_10px_28px_rgba(16,185,129,0.08)]">
-            <p className="text-sm text-slate-500">Cash</p>
-            <p className="mt-2 text-xl font-semibold text-slate-900">{formatMoney(cashBalance)}</p>
-          </div>
-
-          <div className="rounded-3xl border border-slate-200/70 bg-gradient-to-b from-slate-50/85 to-white p-5 shadow-[0_10px_28px_rgba(15,23,42,0.04)]">
-            <p className="text-sm text-slate-500">As Of</p>
-            <p className="mt-2 text-sm font-medium text-slate-900">
-              {dashboard?.overview.asOf
-                ? new Date(dashboard.overview.asOf).toLocaleString()
-                : "-"}
-            </p>
-          </div>
-        </section>
+        {assetCards.length > 0 ? (
+          <section className={`grid gap-4 ${assetCards.length >= 3 ? "md:grid-cols-3" : `md:grid-cols-${assetCards.length}`}`}>
+            {assetCards.map((item) => (
+              <div
+                key={item.key}
+                className={`rounded-3xl border p-5 ${item.className}`}
+              >
+                <p className="text-sm text-slate-500">{item.label}</p>
+                <p className="mt-2 text-xl font-semibold text-slate-900">
+                  {formatMoney(item.value, 2, baseCurrency)}
+                </p>
+              </div>
+            ))}
+          </section>
+        ) : null}
       </div>
 
       <AddAssetModal

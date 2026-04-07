@@ -53,7 +53,6 @@ import {
   searchTwelveDataHandler
 } from "../modules/store/store.provider-controller";
 import {
-  backfillBinanceRealizedHandler,
   persistBinanceSnapshotHandler,
   runBinanceSyncHandler
 } from "../modules/sync/sync.controller";
@@ -115,10 +114,6 @@ apiRouter.post("/sync/binance/accounts/:accountId", runBinanceSyncHandler);
 apiRouter.post(
   "/sync/binance/accounts/:accountId/persist-snapshot",
   persistBinanceSnapshotHandler
-);
-apiRouter.post(
-  "/sync/binance/accounts/:accountId/backfill-realized",
-  backfillBinanceRealizedHandler
 );
 
 apiRouter.get("/store", getStoreHandler);

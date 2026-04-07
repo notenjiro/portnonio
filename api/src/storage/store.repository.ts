@@ -9,12 +9,16 @@ function getDefaultAccountCurrency(source: string): "USD" | "THB" {
   return "THB";
 }
 
+/**
+ * 🔥 DEFAULT (v2)
+ */
 const defaultStoreData: StoreData = {
-  version: 1,
+  version: 2,
   baseCurrency: DEFAULT_SYSTEM_CURRENCY,
   accounts: [],
   assets: [],
-  accountAssetLinks: []
+  accountAssetLinks: [],
+  transactions: [] // 👈 NEW
 };
 
 function normalizeAccount(account: any): AccountRecord {
@@ -28,8 +32,10 @@ function normalizeAccount(account: any): AccountRecord {
 }
 
 function normalizeStoreData(input: Partial<StoreData> | null | undefined): StoreData {
+  const version = input?.version ?? 1;
+
   return {
-    version: 1,
+    version: 2, // 👈 force upgrade
 
     baseCurrency:
       input?.baseCurrency === "USD" || input?.baseCurrency === "THB"
@@ -72,6 +78,13 @@ function normalizeStoreData(input: Partial<StoreData> | null | undefined): Store
           ...link,
           quantity: typeof link.quantity === "number" ? link.quantity : 1
         }))
+      : [],
+
+    /**
+     * 🔥 NEW: TRANSACTIONS (กัน undefined)
+     */
+    transactions: Array.isArray(input?.transactions)
+      ? input.transactions
       : []
   };
 }

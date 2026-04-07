@@ -1,7 +1,43 @@
 export type AccountSource = "binance" | "stock" | "fund";
 export type AssetCategory = "crypto" | "stock" | "fund";
 
-export type Currency = "USD" | "THB"; // 👈 เพิ่ม
+export type Currency = "USD" | "THB";
+
+/**
+ * 🧠 TRANSACTION SIDE
+ */
+export type TransactionSide = "buy" | "sell";
+
+/**
+ * 🧠 TRANSACTION RECORD (หัวใจ PnL)
+ */
+export interface TransactionRecord {
+  id: string;
+
+  accountId: string;
+  assetId: string;
+
+  side: TransactionSide;
+
+  quantity: number;
+  price: number; // price ต่อ unit
+  currency: Currency;
+
+  fee: number;
+  feeCurrency: Currency;
+
+  executedAt: string;
+
+  /**
+   * optional สำหรับ sync provider
+   */
+  source?: "binance" | "manual" | "import";
+  orderId?: string | null;
+  tradeId?: string | null;
+
+  createdAt: string;
+  updatedAt: string;
+}
 
 export interface BinanceAccountSettings {
   apiKey: string;
@@ -18,7 +54,7 @@ export interface AccountRecord {
   source: AccountSource;
   provider: string;
 
-  baseCurrency: Currency; // 👈 เพิ่ม (สำคัญมาก)
+  baseCurrency: Currency;
 
   settings: BinanceAccountSettings | null;
   createdAt: string;
@@ -38,7 +74,7 @@ export interface AssetRecord {
   source: AccountSource;
   category: AssetCategory;
 
-  currency: Currency; // 👈 tighten type
+  currency: Currency;
 
   metadata: AssetMetadata | null;
   createdAt: string;
@@ -54,12 +90,21 @@ export interface AccountAssetLinkRecord {
   updatedAt: string;
 }
 
+/**
+ * 🔥 STORE ROOT
+ */
 export interface StoreData {
-  version: 1;
+  version: 2; // 👈 bump version
 
-  baseCurrency: Currency; // 👈 เปลี่ยนจาก fix เป็น dynamic
+  baseCurrency: Currency;
 
   accounts: AccountRecord[];
   assets: AssetRecord[];
+
   accountAssetLinks: AccountAssetLinkRecord[];
+
+  /**
+   * 🔥 NEW: transaction layer
+   */
+  transactions: TransactionRecord[];
 }
